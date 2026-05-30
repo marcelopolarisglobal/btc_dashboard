@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitcoin Dashboard — Polaris Global Strategies</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+    <div class="container">
+
+        <header>
+            <div class="logo">
+                <span class="btc-icon">₿</span>
+                <div class="logo-text">
+                    <h1>Bitcoin</h1>
+                    <span class="ticker">BTC</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <span class="update-label">Atualizado: <span id="last-update">--:--:--</span></span>
+                <div class="currency-toggle">
+                    <button class="currency-btn active" data-currency="usd">USD</button>
+                    <button class="currency-btn" data-currency="brl">BRL</button>
+                </div>
+            </div>
+        </header>
+
+        <div id="loading">Carregando dados...</div>
+
+        <!-- Cards principais de preço e variação -->
+        <div class="cards-grid main-cards">
+            <div class="card price-card">
+                <span class="card-label">Preço Atual</span>
+                <span class="card-value accent" id="price">--</span>
+            </div>
+            <div class="card">
+                <span class="card-label">Variação 24h</span>
+                <span class="card-value" id="change24h">--</span>
+            </div>
+            <div class="card">
+                <span class="card-label">Variação 7 dias</span>
+                <span class="card-value" id="change7d">--</span>
+            </div>
+            <div class="card">
+                <span class="card-label">Variação 30 dias</span>
+                <span class="card-value" id="change30d">--</span>
+            </div>
+            <div class="card">
+                <span class="card-label">Variação 1 ano</span>
+                <span class="card-value" id="change1y">--</span>
+            </div>
+        </div>
+
+        <!-- Cards secundários de mercado -->
+        <div class="cards-grid secondary-cards">
+            <div class="card">
+                <span class="card-label">Máxima 24h</span>
+                <span class="card-value" id="high24h">--</span>
+            </div>
+            <div class="card">
+                <span class="card-label">Mínima 24h</span>
+                <span class="card-value" id="low24h">--</span>
+            </div>
+            <div class="card">
+                <span class="card-label">Volume 24h</span>
+                <span class="card-value" id="volume">--</span>
+            </div>
+            <div class="card">
+                <span class="card-label">Market Cap</span>
+                <span class="card-value" id="marketcap">--</span>
+            </div>
+        </div>
+
+        <!-- Seletor de período -->
+        <div class="period-selector">
+            <div class="period-buttons">
+                <button class="period-btn" data-period="1">1D</button>
+                <button class="period-btn active" data-period="7">7D</button>
+                <button class="period-btn" data-period="30">1M</button>
+                <button class="period-btn" data-period="90">3M</button>
+                <button class="period-btn" data-period="ytd">YTD</button>
+                <button class="period-btn" data-period="365">1A</button>
+                <button class="period-btn" data-period="1825">5A</button>
+                <button class="period-btn" data-period="max">ALL</button>
+            </div>
+            <div class="date-range">
+                <label>De: <input type="date" id="date-from" min="2013-04-28"></label>
+                <label>Até: <input type="date" id="date-to" min="2013-04-28"></label>
+                <button id="btn-apply-dates">Aplicar</button>
+            </div>
+        </div>
+
+        <!-- Gráfico principal -->
+        <div class="chart-box main-chart-box">
+            <span class="chart-note">Dados históricos em USD · Binance</span>
+            <canvas id="main-chart"></canvas>
+        </div>
+
+        <!-- Indicadores avançados -->
+        <div class="cards-grid advanced-cards">
+
+            <div class="card adv-card">
+                <span class="card-label">Fear &amp; Greed Index</span>
+                <div class="fg-display">
+                    <span class="fg-num" id="fg-value">--</span>
+                    <span class="fg-class" id="fg-class">--</span>
+                </div>
+                <div class="fg-bar-track">
+                    <div class="fg-needle" id="fg-bar"></div>
+                </div>
+                <div class="fg-axis-labels">
+                    <span>Medo</span><span>Neutro</span><span>Ganância</span>
+                </div>
+            </div>
+
+            <div class="card adv-card">
+                <span class="card-label">Múltiplo de Mayer</span>
+                <div class="mayer-display">
+                    <span class="mayer-value" id="mayer-value">--</span>
+                    <span class="badge" id="mayer-badge">--</span>
+                </div>
+                <span class="adv-sub" id="mayer-sub">MM200: --</span>
+            </div>
+
+            <div class="card adv-card">
+                <span class="card-label">Dominância BTC</span>
+                <span class="card-value accent dom-value" id="dominance">--</span>
+                <span class="adv-sub">do market cap global em cripto</span>
+            </div>
+
+            <div class="card adv-card mvrv-card">
+                <span class="card-label">MVRV Z-Score</span>
+                <span class="mvrv-note">Indicador on-chain — requer dados proprietários não disponíveis em APIs gratuitas.</span>
+                <a class="mvrv-link" href="https://www.lookintobitcoin.com/charts/mvrv-zscore/" target="_blank" rel="noopener">
+                    Ver gráfico em LookIntoBitcoin →
+                </a>
+            </div>
+
+        </div>
+
+        <!-- Glossário colapsável -->
+        <section class="glossary">
+            <h2 class="section-title">Entenda os Indicadores</h2>
+
+            <details class="glossary-item">
+                <summary>O que é o Fear &amp; Greed Index?</summary>
+                <div class="glossary-body">
+                    <p>Mede o sentimento predominante do mercado de criptomoedas numa escala de 0 a 100. Valores próximos de 0 indicam <strong>Medo Extremo</strong> — os investidores estão nervosos e o preço pode estar deprimido além do que os fundamentos justificam, criando possíveis oportunidades para quem tem visão de longo prazo. Valores próximos de 100 indicam <strong>Ganância Extrema</strong> — o mercado está eufórico e historicamente esse excesso de otimismo precede correções de preço.</p>
+                    <div class="fg-scale">
+                        <span class="scale-item fear-extreme">0–24 · Medo Extremo</span>
+                        <span class="scale-item fear">25–44 · Medo</span>
+                        <span class="scale-item neutral">45–55 · Neutro</span>
+                        <span class="scale-item greed">56–75 · Ganância</span>
+                        <span class="scale-item greed-extreme">76–100 · Ganância Extrema</span>
+                    </div>
+                </div>
+            </details>
+
+            <details class="glossary-item">
+                <summary>O que é o Múltiplo de Mayer?</summary>
+                <div class="glossary-body">
+                    <p>Divide o preço atual do Bitcoin pela sua <strong>Média Móvel de 200 dias (MM200)</strong>. A MM200 é a média dos preços de fechamento dos últimos 200 dias e é amplamente usada como referência de tendência de longo prazo. O múltiplo indica se o preço está "barato" ou "caro" em relação ao seu próprio histórico.</p>
+                    <p>Um múltiplo de <strong>1,0</strong> significa que o preço está exatamente na MM200. Acima de <strong>2,4</strong>, o Bitcoin historicamente entrou em território de sobreaquecimento. Abaixo de <strong>0,8</strong>, historicamente representou zonas de fundo de ciclo. A média histórica do múltiplo é aproximadamente <strong>1,4</strong>.</p>
+                </div>
+            </details>
+
+            <details class="glossary-item">
+                <summary>O que é a Dominância do Bitcoin?</summary>
+                <div class="glossary-body">
+                    <p>É o percentual do valor total de todas as criptomoedas que pertence ao Bitcoin. Quando a dominância está <strong>alta (acima de 60%)</strong>, os investidores estão preferindo o ativo mais estabelecido e seguro do setor — geralmente um sinal de aversão ao risco. Quando a dominância está <strong>baixa</strong>, significa que capital está migrando para altcoins em busca de retornos maiores, fenômeno conhecido como <em>altseason</em>.</p>
+                </div>
+            </details>
+
+            <details class="glossary-item">
+                <summary>O que é o MVRV Z-Score?</summary>
+                <div class="glossary-body">
+                    <p>Compara o preço de mercado do Bitcoin com o seu <strong>Realized Price</strong> — o preço médio pelo qual cada bitcoin existente mudou de mãos pela última vez na blockchain. O Z-Score mede o quanto o preço atual desvia da média histórica dessa relação.</p>
+                    <p>Quando o Z-Score está <strong>muito negativo ou próximo de zero</strong>, o mercado está vendendo próximo (ou abaixo) do custo médio de aquisição — historicamente uma zona de acumulação. Quando está <strong>acima de 6</strong>, o preço está muito acima do custo médio, o que historicamente coincidiu com topos de ciclo.</p>
+                    <p>Este indicador exige dados on-chain proprietários (o Realized Cap) que não estão disponíveis em APIs gratuitas sem autenticação. Para visualizar o gráfico em tempo real, acesse gratuitamente: <a href="https://www.lookintobitcoin.com/charts/mvrv-zscore/" target="_blank" rel="noopener">LookIntoBitcoin.com</a>.</p>
+                </div>
+            </details>
+
+        </section>
+
+    </div><!-- /.container -->
+
+    <footer>
+        <div class="disclaimer">
+            <p><strong>Aviso Legal</strong> — As informações exibidas neste dashboard são fornecidas exclusivamente para fins informativos e educacionais, com base em dados públicos de mercado. Não constituem recomendação de investimento, aconselhamento financeiro, consultoria de valores mobiliários ou oferta de compra e venda de ativos. Rentabilidade passada não é garantia de rentabilidade futura. Criptoativos são investimentos de alto risco e podem resultar em perda total do capital investido. Antes de tomar qualquer decisão de investimento, consulte um profissional financeiro habilitado.</p>
+            <p class="copyright">© 2025 Polaris Global Strategies Ltd. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
