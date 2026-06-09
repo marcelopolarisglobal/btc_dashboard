@@ -1,15 +1,31 @@
 const API     = 'https://api.coingecko.com/api/v3';
 const BINANCE = 'https://api.binance.com/api/v3';
 const FG_API  = 'https://api.alternative.me';
+const MEMPOOL = 'https://mempool.space/api';
 
-let currency      = 'usd';
-let currentPeriod = '7';
-let mainChart     = null;
+const CONFIG = {
+    REFRESH_MS:        60_000,
+    MAYER_DAYS:        200,
+    FETCH_TIMEOUT_MS:  8_000,
+    FETCH_MAX_RETRIES: 2,
+    CACHE_TTL_MS:      60_000,
+    BTC_START_DATE:    '2013-04-28',
+    FG_BANDS:          [24, 44, 55, 75],
+    FG_COLORS:         ['#f44336', '#ff7043', '#888', '#69f0ae', '#00c853'],
+    MAYER:              { low: 0.8, mid: 1.0, high: 2.4 },
+    NEXT_HALVING_BLOCK: 1_050_000,
+    ERR_CHART:          'Não foi possível carregar o período. Aguarde e tente novamente.',
+};
+
+let currency        = 'usd';
+let currentPeriod   = '7';
+let mainChart       = null;
+let lastPrices      = null;
+let lastChartPeriod = '7';
 
 const SYM    = { usd: '$',    brl: 'R$' };
 const LOCALE = { usd: 'en-US', brl: 'pt-BR' };
 
-// Mapeamento período → parâmetros Binance klines
 const BINANCE_MAP = {
     '1':    { interval: '5m', limit: 288  },
     '7':    { interval: '1h', limit: 168  },
@@ -22,27 +38,40 @@ const BINANCE_MAP = {
 
 // ── API ──────────────────────────────────────────────────────────────────────
 
-async function get(url) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+async function get(url, attempt = 0) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), CONFIG.FETCH_TIMEOUT_MS);
+    try {
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timer);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+    } catch (e) {
+        clearTimeout(timer);
+        if (attempt >= CONFIG.FETCH_MAX_RETRIES) throw e;
+        await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)));
+        return get(url, attempt + 1);
+    }
 }
 
-// CoinGecko — apenas dados de preço atual e dominância (2 chamadas totais)
-const fetchCoin   = () => get(`${API}/coins/bitcoin?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false`);
-const fetchGlobal = () => get(`${API}/global`);
+const cache = {};
+function cachedGet(url) {
+    const entry = cache[url];
+    if (entry && Date.now() - entry.ts < CONFIG.CACHE_TTL_MS) return Promise.resolve(entry.data);
+    return get(url).then(data => { cache[url] = { data, ts: Date.now() }; return data; });
+}
 
-// Alternative.me — Fear & Greed (API separada, opcional)
-const fetchFearGreed = () => get(`${FG_API}/fng/?limit=1`);
+const fetchCoin        = () => cachedGet(`${API}/coins/bitcoin?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false`);
+const fetchGlobal      = () => cachedGet(`${API}/global`);
+const fetchFearGreed   = () => get(`${FG_API}/fng/?limit=1`);
+const fetchBlockHeight = () => get(`${MEMPOOL}/blocks/tip/height`);
 
-// Binance — todos os dados históricos de preço (sem rate limit relevante)
 function klinesToPrices(klines) {
     return klines.map(k => [k[0], parseFloat(k[4])]);
 }
 
 async function fetchBinanceChart(period) {
     let interval, limit;
-
     if (period === 'ytd') {
         const days = parseInt(resolveDays('ytd'));
         interval   = days <= 90 ? '4h' : '1d';
@@ -52,7 +81,6 @@ async function fetchBinanceChart(period) {
         interval = p.interval;
         limit    = p.limit;
     }
-
     const klines = await get(`${BINANCE}/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`);
     return klinesToPrices(klines);
 }
@@ -65,7 +93,7 @@ async function fetchBinanceRange(fromSec, toSec) {
 }
 
 async function fetchBinanceMayer() {
-    const klines = await get(`${BINANCE}/klines?symbol=BTCUSDT&interval=1d&limit=201`);
+    const klines = await get(`${BINANCE}/klines?symbol=BTCUSDT&interval=1d&limit=${CONFIG.MAYER_DAYS + 1}`);
     return klinesToPrices(klines);
 }
 
@@ -108,6 +136,39 @@ function fmtLabel(ts, days) {
     return String(d.getFullYear());
 }
 
+// ── Theme ─────────────────────────────────────────────────────────────────────
+
+function chartColors() {
+    const light = document.documentElement.dataset.theme === 'light';
+    return {
+        grid: light ? '#e0e0e0' : '#1e1e1e',
+        tick: light ? '#555'    : '#888',
+        fill: light ? 'rgba(247,147,26,0.10)' : 'rgba(247,147,26,0.07)',
+    };
+}
+
+function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    const btn = document.getElementById('theme-toggle');
+    if (btn) btn.textContent = theme === 'light' ? '🌙' : '☀️';
+}
+
+function initTheme() {
+    const saved = localStorage.getItem('btc-theme');
+    const pref  = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    applyTheme(pref);
+}
+
+document.getElementById('theme-toggle').addEventListener('click', () => {
+    const current = document.documentElement.dataset.theme;
+    const next    = current === 'light' ? 'dark' : 'light';
+    applyTheme(next);
+    localStorage.setItem('btc-theme', next);
+    if (mainChart && lastPrices) {
+        mainChart = buildChart(mainChart, lastPrices, lastChartPeriod);
+    }
+});
+
 // ── Cards (CoinGecko) ─────────────────────────────────────────────────────────
 
 function setText(id, text) { document.getElementById(id).textContent = text; }
@@ -120,14 +181,15 @@ function setVariation(id, value) {
 }
 
 function updateCards(coin, global) {
-    const m = coin.market_data;
+    const m = coin?.market_data;
     const c = currency;
-    setText('price',     sym() + ' ' + fmtPrice(m.current_price[c]));
-    setText('high24h',   sym() + ' ' + fmtPrice(m.high_24h[c]));
-    setText('low24h',    sym() + ' ' + fmtPrice(m.low_24h[c]));
-    setText('volume',    sym() + ' ' + fmtLarge(m.total_volume[c]));
-    setText('marketcap', sym() + ' ' + fmtLarge(m.market_cap[c]));
-    setText('dominance', global.data.market_cap_percentage.btc.toFixed(1) + '%');
+    if (!m) return;
+    setText('price',     sym() + ' ' + fmtPrice(m.current_price?.[c] ?? 0));
+    setText('high24h',   sym() + ' ' + fmtPrice(m.high_24h?.[c] ?? 0));
+    setText('low24h',    sym() + ' ' + fmtPrice(m.low_24h?.[c] ?? 0));
+    setText('volume',    sym() + ' ' + fmtLarge(m.total_volume?.[c] ?? 0));
+    setText('marketcap', sym() + ' ' + fmtLarge(m.market_cap?.[c] ?? 0));
+    setText('dominance', (global?.data?.market_cap_percentage?.btc ?? 0).toFixed(1) + '%');
     setText('last-update', new Date().toLocaleTimeString('pt-BR'));
     setVariation('change24h', m.price_change_percentage_24h);
     setVariation('change7d',  m.price_change_percentage_7d);
@@ -146,11 +208,13 @@ const FG_PT = {
 };
 
 function fgColor(v) {
-    if (v <= 24) return '#f44336';
-    if (v <= 44) return '#ff7043';
-    if (v <= 55) return '#888';
-    if (v <= 75) return '#69f0ae';
-    return '#00c853';
+    const b = CONFIG.FG_BANDS;
+    const c = CONFIG.FG_COLORS;
+    if (v <= b[0]) return c[0];
+    if (v <= b[1]) return c[1];
+    if (v <= b[2]) return c[2];
+    if (v <= b[3]) return c[3];
+    return c[4];
 }
 
 function updateFearGreed(fgData) {
@@ -179,16 +243,18 @@ function fgUnavailable() {
 // ── Mayer Multiple (Binance) ──────────────────────────────────────────────────
 
 function updateMayer(prices) {
-    const last200   = prices.slice(-200).map(p => p[1]);
+    if (prices.length < CONFIG.MAYER_DAYS) { mayerUnavailable(); return; }
+    const last200   = prices.slice(-CONFIG.MAYER_DAYS).map(p => p[1]);
     const ma200     = last200.reduce((a, b) => a + b, 0) / last200.length;
     const lastPrice = prices[prices.length - 1][1];
     const multiple  = lastPrice / ma200;
 
+    const { low, mid, high } = CONFIG.MAYER;
     let label, cls;
-    if (multiple < 0.8)       { label = 'Subvalorizado'; cls = 'sub'; }
-    else if (multiple < 1.0)  { label = 'Abaixo MM200';  cls = 'sub'; }
-    else if (multiple <= 2.4) { label = 'Zona Normal';   cls = 'norm'; }
-    else                      { label = 'Sobreaquecido'; cls = 'hot'; }
+    if (multiple < low)        { label = 'Subvalorizado'; cls = 'sub'; }
+    else if (multiple < mid)   { label = 'Abaixo MM200';  cls = 'sub'; }
+    else if (multiple <= high) { label = 'Zona Normal';   cls = 'norm'; }
+    else                       { label = 'Sobreaquecido'; cls = 'hot'; }
 
     setText('mayer-value', '×' + multiple.toFixed(2));
     setText('mayer-sub', 'MM200: $' + fmtLarge(ma200));
@@ -205,13 +271,35 @@ function mayerUnavailable() {
     badge.className   = 'badge norm';
 }
 
+// ── Halving Countdown (Mempool.space) ─────────────────────────────────────────
+
+function updateHalving(height) {
+    const remaining = CONFIG.NEXT_HALVING_BLOCK - height;
+    const days      = Math.ceil(remaining / 144);
+    const estDate   = new Date(Date.now() + remaining * 10 * 60 * 1000);
+    const dateStr   = estDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    setText('halving-days',  days.toLocaleString('pt-BR') + ' dias');
+    setText('halving-block', 'Bloco ' + height.toLocaleString('pt-BR') + ' / 1.050.000');
+    setText('halving-date',  'Previsão: ' + dateStr);
+}
+
+function halvingUnavailable() {
+    setText('halving-days',  'N/D');
+    setText('halving-block', '--');
+    setText('halving-date',  '--');
+}
+
 // ── Chart (Binance) ───────────────────────────────────────────────────────────
 
 function buildChart(existing, prices, period) {
-    if (existing) existing.destroy();
+    if (existing) { try { existing.destroy(); } catch (_) {} }
+    lastPrices      = prices;
+    lastChartPeriod = period;
+
     const days   = labelDays(period);
     const labels = prices.map(p => fmtLabel(p[0], days));
     const values = prices.map(p => p[1]);
+    const { grid, tick, fill } = chartColors();
 
     return new Chart(document.getElementById('main-chart'), {
         type: 'line',
@@ -220,7 +308,7 @@ function buildChart(existing, prices, period) {
             datasets: [{
                 data: values,
                 borderColor: '#f7931a',
-                backgroundColor: 'rgba(247,147,26,0.07)',
+                backgroundColor: fill,
                 borderWidth: 2,
                 pointRadius: 0,
                 pointHoverRadius: 4,
@@ -242,13 +330,13 @@ function buildChart(existing, prices, period) {
             },
             scales: {
                 x: {
-                    ticks: { color: '#888', maxTicksLimit: 8, maxRotation: 0 },
-                    grid:  { color: '#1e1e1e' }
+                    ticks: { color: tick, maxTicksLimit: 8, maxRotation: 0 },
+                    grid:  { color: grid }
                 },
                 y: {
                     position: 'right',
-                    ticks: { color: '#888', callback: v => '$ ' + fmtLarge(v) },
-                    grid:  { color: '#1e1e1e' }
+                    ticks: { color: tick, callback: v => '$ ' + fmtLarge(v) },
+                    grid:  { color: grid }
                 }
             }
         }
@@ -258,7 +346,9 @@ function buildChart(existing, prices, period) {
 // ── Load functions ────────────────────────────────────────────────────────────
 
 function setLoading(on) {
-    document.getElementById('loading').style.display = on ? 'block' : 'none';
+    const el = document.getElementById('loading');
+    el.style.display = on ? 'block' : 'none';
+    if (on) el.textContent = 'Carregando dados...';
 }
 
 function showError(msg) {
@@ -270,6 +360,7 @@ function showError(msg) {
 async function loadAdvancedIndicators() {
     try {
         const fgRes = await fetchFearGreed();
+        if (!fgRes?.data?.length) throw new Error('Dados indisponíveis');
         updateFearGreed(fgRes.data[0]);
     } catch (e) {
         console.warn('[Dashboard] Fear & Greed indisponível:', e.message);
@@ -282,6 +373,14 @@ async function loadAdvancedIndicators() {
     } catch (e) {
         console.warn('[Dashboard] Mayer Multiple indisponível:', e.message);
         mayerUnavailable();
+    }
+
+    try {
+        const height = await fetchBlockHeight();
+        updateHalving(height);
+    } catch (e) {
+        console.warn('[Dashboard] Halving indisponível:', e.message);
+        halvingUnavailable();
     }
 }
 
@@ -299,12 +398,11 @@ async function loadMainChart(period) {
     try {
         const prices = await fetchBinanceChart(period);
         mainChart    = buildChart(mainChart, prices, period);
+        setLoading(false);
     } catch (e) {
         console.error('[Dashboard] Erro ao carregar gráfico:', e.message);
-        showError('Não foi possível carregar o período. Aguarde e tente novamente.');
-        return;
+        showError(CONFIG.ERR_CHART);
     }
-    setLoading(false);
 }
 
 async function loadMainChartRange(fromSec, toSec) {
@@ -313,38 +411,36 @@ async function loadMainChartRange(fromSec, toSec) {
         const daysDiff = String(Math.round((toSec - fromSec) / 86400));
         const prices   = await fetchBinanceRange(fromSec, toSec);
         mainChart      = buildChart(mainChart, prices, daysDiff);
+        setLoading(false);
     } catch (e) {
         console.error('[Dashboard] Erro ao carregar intervalo:', e.message);
-        showError('Não foi possível carregar o período. Aguarde e tente novamente.');
-        return;
+        showError(CONFIG.ERR_CHART);
     }
-    setLoading(false);
 }
 
 async function loadAll() {
     setLoading(true);
 
-    // Fase 1 — Gráfico via Binance (crítico, sempre deve funcionar)
-    try {
-        const prices = await fetchBinanceChart(currentPeriod);
-        mainChart    = buildChart(mainChart, prices, currentPeriod);
-    } catch (e) {
-        console.error('[Dashboard] Erro ao carregar gráfico (Binance):', e.message);
+    const [chartResult, cardsResult] = await Promise.allSettled([
+        fetchBinanceChart(currentPeriod),
+        Promise.all([fetchCoin(), fetchGlobal()])
+    ]);
+
+    if (chartResult.status === 'fulfilled') {
+        mainChart = buildChart(mainChart, chartResult.value, currentPeriod);
+        setLoading(false);
+    } else {
+        console.error('[Dashboard] Erro ao carregar gráfico:', chartResult.reason.message);
         showError('Não foi possível carregar dados. Verifique sua conexão e recarregue a página.');
-        return;
     }
 
-    setLoading(false);
-
-    // Fase 2 — Cards via CoinGecko (opcional: falha silenciosa, cards ficam em --)
-    try {
-        const [coin, global] = await Promise.all([fetchCoin(), fetchGlobal()]);
+    if (cardsResult.status === 'fulfilled') {
+        const [coin, global] = cardsResult.value;
         updateCards(coin, global);
-    } catch (e) {
-        console.warn('[Dashboard] CoinGecko indisponível (cards não atualizados):', e.message);
+    } else {
+        console.warn('[Dashboard] CoinGecko indisponível:', cardsResult.reason.message);
     }
 
-    // Fase 3 — Indicadores avançados (não bloqueiam a página)
     loadAdvancedIndicators();
 }
 
@@ -353,17 +449,17 @@ async function loadAll() {
 document.querySelectorAll('.period-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
         if (btn.classList.contains('active')) return;
-
         const allBtns = document.querySelectorAll('.period-btn');
         allBtns.forEach(b => { b.classList.remove('active'); b.disabled = true; });
         btn.classList.add('active');
         currentPeriod = btn.dataset.period;
         document.getElementById('date-from').value = '';
         document.getElementById('date-to').value   = '';
-
-        await loadMainChart(currentPeriod);
-
-        allBtns.forEach(b => { b.disabled = false; });
+        try {
+            await loadMainChart(currentPeriod);
+        } finally {
+            allBtns.forEach(b => { b.disabled = false; });
+        }
     });
 });
 
@@ -371,6 +467,16 @@ document.getElementById('btn-apply-dates').addEventListener('click', async () =>
     const fromVal = document.getElementById('date-from').value;
     const toVal   = document.getElementById('date-to').value;
     if (!fromVal || !toVal) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    if (fromVal < CONFIG.BTC_START_DATE) {
+        alert('A data inicial deve ser posterior a 28/04/2013 (início do histórico disponível).');
+        return;
+    }
+    if (toVal > today) {
+        alert('A data final não pode ser no futuro.');
+        return;
+    }
 
     const from = Math.floor(new Date(fromVal).getTime() / 1000);
     const to   = Math.floor(new Date(toVal + 'T23:59:59').getTime() / 1000);
@@ -393,5 +499,6 @@ document.querySelectorAll('.currency-btn').forEach(btn => {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-setInterval(refreshCards, 60_000);
+initTheme();
+setInterval(refreshCards, CONFIG.REFRESH_MS);
 loadAll();

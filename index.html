@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Dashboard de dados do Bitcoin em tempo real — preço, variações, Fear &amp; Greed, Múltiplo de Mayer e dominância de mercado. Desenvolvido pela Polaris Global Strategies.">
+    <meta name="theme-color" content="#f7931a">
     <title>Bitcoin Dashboard — Polaris Global Strategies</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"
+            integrity="sha384-NrKB+u6Ts6AtkIhwPixiKTzgSKNblyhlk0Sohlgar9UHUBzai/sgnNNWWd291xqt"
+            crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -13,7 +17,7 @@
 
         <header>
             <div class="logo">
-                <span class="btc-icon">₿</span>
+                <span class="btc-icon" aria-label="Símbolo do Bitcoin">₿</span>
                 <div class="logo-text">
                     <h1>Bitcoin</h1>
                     <span class="ticker">BTC</span>
@@ -21,14 +25,15 @@
             </div>
             <div class="header-right">
                 <span class="update-label">Atualizado: <span id="last-update">--:--:--</span></span>
-                <div class="currency-toggle">
-                    <button class="currency-btn active" data-currency="usd">USD</button>
-                    <button class="currency-btn" data-currency="brl">BRL</button>
+                <button id="theme-toggle" aria-label="Alternar tema claro/escuro">☀️</button>
+                <div class="currency-toggle" role="group" aria-label="Selecionar moeda">
+                    <button class="currency-btn active" data-currency="usd" aria-label="Exibir em dólar americano">USD</button>
+                    <button class="currency-btn" data-currency="brl" aria-label="Exibir em real brasileiro">BRL</button>
                 </div>
             </div>
         </header>
 
-        <div id="loading">Carregando dados...</div>
+        <div id="loading" role="status" aria-live="polite">Carregando dados...</div>
 
         <!-- Cards principais de preço e variação -->
         <div class="cards-grid main-cards">
@@ -76,27 +81,27 @@
 
         <!-- Seletor de período -->
         <div class="period-selector">
-            <div class="period-buttons">
-                <button class="period-btn" data-period="1">1D</button>
-                <button class="period-btn active" data-period="7">7D</button>
-                <button class="period-btn" data-period="30">1M</button>
-                <button class="period-btn" data-period="90">3M</button>
-                <button class="period-btn" data-period="ytd">YTD</button>
-                <button class="period-btn" data-period="365">1A</button>
-                <button class="period-btn" data-period="1825">5A</button>
-                <button class="period-btn" data-period="max">ALL</button>
+            <div class="period-buttons" role="group" aria-label="Selecionar período do gráfico">
+                <button class="period-btn" data-period="1" aria-label="1 dia">1D</button>
+                <button class="period-btn active" data-period="7" aria-label="7 dias">7D</button>
+                <button class="period-btn" data-period="30" aria-label="1 mês">1M</button>
+                <button class="period-btn" data-period="90" aria-label="3 meses">3M</button>
+                <button class="period-btn" data-period="ytd" aria-label="Ano até hoje">YTD</button>
+                <button class="period-btn" data-period="365" aria-label="1 ano">1A</button>
+                <button class="period-btn" data-period="1825" aria-label="5 anos">5A</button>
+                <button class="period-btn" data-period="max" aria-label="Todo o histórico">ALL</button>
             </div>
             <div class="date-range">
-                <label>De: <input type="date" id="date-from" min="2013-04-28"></label>
-                <label>Até: <input type="date" id="date-to" min="2013-04-28"></label>
-                <button id="btn-apply-dates">Aplicar</button>
+                <label for="date-from">De: <input type="date" id="date-from" min="2013-04-28" aria-label="Data inicial"></label>
+                <label for="date-to">Até: <input type="date" id="date-to" min="2013-04-28" aria-label="Data final"></label>
+                <button id="btn-apply-dates" aria-label="Aplicar intervalo de datas">Aplicar</button>
             </div>
         </div>
 
         <!-- Gráfico principal -->
         <div class="chart-box main-chart-box">
             <span class="chart-note">Dados históricos em USD · Binance</span>
-            <canvas id="main-chart"></canvas>
+            <canvas id="main-chart" role="img" aria-label="Gráfico de preço histórico do Bitcoin"></canvas>
         </div>
 
         <!-- Indicadores avançados -->
@@ -108,10 +113,10 @@
                     <span class="fg-num" id="fg-value">--</span>
                     <span class="fg-class" id="fg-class">--</span>
                 </div>
-                <div class="fg-bar-track">
+                <div class="fg-bar-track" role="img" aria-label="Barra de sentimento do mercado">
                     <div class="fg-needle" id="fg-bar"></div>
                 </div>
-                <div class="fg-axis-labels">
+                <div class="fg-axis-labels" aria-hidden="true">
                     <span>Medo</span><span>Neutro</span><span>Ganância</span>
                 </div>
             </div>
@@ -137,6 +142,15 @@
                 <a class="mvrv-link" href="https://www.lookintobitcoin.com/charts/mvrv-zscore/" target="_blank" rel="noopener">
                     Ver gráfico em LookIntoBitcoin →
                 </a>
+            </div>
+
+            <div class="card adv-card">
+                <span class="card-label">Próximo Halving</span>
+                <div class="halving-display">
+                    <span class="halving-days" id="halving-days">--</span>
+                </div>
+                <span class="adv-sub" id="halving-block">Bloco -- / 1.050.000</span>
+                <span class="adv-sub" id="halving-date">Previsão: --</span>
             </div>
 
         </div>
@@ -171,6 +185,15 @@
                 <summary>O que é a Dominância do Bitcoin?</summary>
                 <div class="glossary-body">
                     <p>É o percentual do valor total de todas as criptomoedas que pertence ao Bitcoin. Quando a dominância está <strong>alta (acima de 60%)</strong>, os investidores estão preferindo o ativo mais estabelecido e seguro do setor — geralmente um sinal de aversão ao risco. Quando a dominância está <strong>baixa</strong>, significa que capital está migrando para altcoins em busca de retornos maiores, fenômeno conhecido como <em>altseason</em>.</p>
+                </div>
+            </details>
+
+            <details class="glossary-item">
+                <summary>O que é o Halving do Bitcoin?</summary>
+                <div class="glossary-body">
+                    <p>O Halving é um evento programado diretamente no código-fonte do Bitcoin que reduz à metade a recompensa recebida pelos mineradores a cada bloco minerado. Ocorre a cada <strong>210.000 blocos</strong> — aproximadamente a cada quatro anos. Essa mecânica garante que a emissão de novos bitcoins desacelere progressivamente até o limite fixo de 21 milhões de unidades, tornando o Bitcoin deflacionário por design. A recompensa atual (desde abril de 2024) é de <strong>3,125 BTC por bloco</strong>; no próximo halving passará a <strong>1,5625 BTC</strong>.</p>
+                    <p>A contagem exibida é calculada a partir da <strong>altura atual da blockchain</strong> — o número total de blocos minerados até agora — subtraída do número do próximo bloco de halving (1.050.000). Multiplicando os blocos restantes pelo tempo médio de <strong>10 minutos por bloco</strong>, obtemos a estimativa de dias. Como a dificuldade de mineração se reajusta automaticamente a cada 2.016 blocos, o tempo médio pode variar ligeiramente, tornando a data uma estimativa, não uma certeza.</p>
+                    <p>Historicamente, os halvings precederam ciclos de alta expressivos: o Bitcoin tende a se apreciar nos 12–18 meses seguintes, pois a oferta de novos BTC é reduzida enquanto a demanda pode permanecer estável ou crescer. Os halvings anteriores ocorreram em novembro de 2012, julho de 2016, maio de 2020 e abril de 2024.</p>
                 </div>
             </details>
 
