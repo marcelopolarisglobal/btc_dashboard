@@ -73,7 +73,7 @@ async function fetchBlockHeight() {
     }
     if (activeCoin.halvingBlockApi === 'blockchair') {
         const data = await get(`${BLOCKCHAIR}/${activeCoin.id}/stats`);
-        return data?.data?.blocks;
+        return data?.data?.best_block_height;
     }
     return null;
 }
@@ -201,7 +201,8 @@ function updateCards(coin, global) {
     setText('low24h',         sym() + ' ' + fmtPrice(m.low_24h?.[c] ?? 0));
     setText('volume',         sym() + ' ' + fmtLarge(m.total_volume?.[c] ?? 0));
     setText('marketcap',      sym() + ' ' + fmtLarge(m.market_cap?.[c] ?? 0));
-    setText('dominance',      (global?.data?.market_cap_percentage?.[activeCoin.dominanceKey] ?? 0).toFixed(1) + '%');
+    const dom = global?.data?.market_cap_percentage?.[activeCoin.dominanceKey];
+    setText('dominance',      dom != null ? dom.toFixed(1) + '%' : 'N/D');
     setText('last-update',    new Date().toLocaleTimeString('pt-BR'));
     setVariation('change24h', m.price_change_percentage_24h_in_currency?.[c] ?? m.price_change_percentage_24h);
     setVariation('change7d',  m.price_change_percentage_7d_in_currency?.[c]  ?? m.price_change_percentage_7d);
@@ -282,7 +283,7 @@ function updateMayer(prices) {
     else                       { label = 'Sobreaquecido'; cls = 'hot'; }
 
     setText('mayer-value', '×' + multiple.toFixed(2));
-    setText('mayer-sub',   'MM200: $' + fmtLarge(ma200));
+    setText('mayer-sub',   'MM200: ' + sym() + ' ' + fmtLarge(ma200));
     const badge = document.getElementById('mayer-badge');
     badge.textContent = label;
     badge.className   = 'badge ' + cls;
@@ -352,7 +353,7 @@ function buildChart(existing, prices, period, coin = activeCoin) {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: item => '$ ' + fmtPrice(item.parsed.y)
+                        label: item => sym() + ' ' + fmtPrice(item.parsed.y)
                     }
                 }
             },
@@ -363,7 +364,7 @@ function buildChart(existing, prices, period, coin = activeCoin) {
                 },
                 y: {
                     position: 'right',
-                    ticks: { color: tick, callback: v => '$ ' + fmtLarge(v) },
+                    ticks: { color: tick, callback: v => sym() + ' ' + fmtLarge(v) },
                     grid:  { color: grid }
                 }
             }

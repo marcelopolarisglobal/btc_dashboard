@@ -27,7 +27,7 @@ Versão 2.0 · Junho 2026
 
 O Crypto Dashboard é uma aplicação web de página única que exibe dados de mercado de criptoativos em tempo real. Desenvolvido para a Polaris Global Strategies Ltd., o projeto apresenta preços, variações históricas, indicadores avançados de análise de mercado e um gráfico interativo.
 
-O ativo exibido é selecionável na barra superior. Cada ativo possui seus próprios indicadores, parâmetros de API e seções educativas — nada de um ativo aparece quando outro está selecionado. Atualmente o único ativo disponível é o **Bitcoin (BTC)**; a arquitetura está preparada para receber Ethereum, Solana e Zcash sem alterações estruturais.
+O ativo exibido é selecionável na barra superior. Cada ativo possui seus próprios indicadores, parâmetros de API e seções educativas — nada de um ativo aparece quando outro está selecionado. Atualmente os ativos disponíveis são **Bitcoin (BTC)** e **Zcash (ZEC)**; a arquitetura está preparada para receber Ethereum e Solana sem alterações estruturais.
 
 **Princípio de design central:** zero dependências instaladas e zero processo de build. O projeto consiste em quatro arquivos estáticos (`index.html`, `style.css`, `coins.js`, `app.js`) que funcionam diretamente no navegador, sem servidor, sem Node.js, sem compilação.
 
@@ -130,7 +130,7 @@ loadAll();        // 4. carrega gráfico, cards e indicadores em paralelo
 | `accentColorAlpha` | object | `{ light, dark }` — fill do gráfico com transparência |
 | `hasHalving` | boolean | Se o card de halving deve ser exibido |
 | `nextHalvingBlock` | number | Número do próximo bloco de halving |
-| `halvingBlockTime` | number | Segundos médios por bloco (BTC: 600, ZEC: 75) |
+| `halvingBlockTime` | number | Segundos médios por bloco (BTC: 600, ZEC: 90) |
 | `halvingBlockApi` | string | `'mempool'` \| `'blockchair'` \| `null` |
 | `mayer` | object | Thresholds `{ low, mid, high }` do Múltiplo de Mayer |
 | `mvrvLink` | string | URL do gráfico MVRV externo |
@@ -334,7 +334,7 @@ Exibida apenas quando `activeCoin.hasHalving === true`. O cálculo usa os parâm
 4. Estimar dias: `remaining ÷ (86400 / activeCoin.halvingBlockTime)`
 5. Estimar data: `hoje + remaining × halvingBlockTime segundos`
 
-Para Bitcoin: 144 blocos/dia (~10 min/bloco). Para Zcash (futuro): 1.152 blocos/dia (~75 seg/bloco).
+Para Bitcoin: 144 blocos/dia (~10 min/bloco). Para Zcash: 960 blocos/dia (~90 seg/bloco, média observada).
 
 ### MVRV Z-Score
 
@@ -532,7 +532,7 @@ ethereum: {
 
 Nenhuma outra alteração é necessária.
 
-**Nota sobre Zcash:** ZEC tem halving (a cada 840.000 blocos, ~75 seg/bloco). Usar `halvingBlockApi: 'blockchair'` — a lógica de fetch já está implementada em `fetchBlockHeight()`.
+**Nota sobre Zcash:** ZEC já está implementado. Usa `halvingBlockApi: 'blockchair'`, halving a cada 840.000 blocos (~90 seg/bloco, média observada), próximo halving no bloco 4.200.000.
 
 ---
 
