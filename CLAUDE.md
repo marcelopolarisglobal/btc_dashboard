@@ -2,8 +2,9 @@
 
 ## O que é este projeto
 
-Dashboard web sobre Bitcoin, construído em HTML/CSS/JS puro (sem framework, sem build step).
+Dashboard web multi-ativo de criptomoedas, construído em HTML/CSS/JS puro (sem framework, sem build step).
 Consome a CoinGecko API e a Alternative.me API (ambas gratuitas, sem autenticação) para exibir preço, variações históricas, indicadores avançados de mercado e gráfico interativo.
+O ativo exibido é selecionável na barra superior; cada ativo tem seus próprios indicadores e seção educativa.
 
 Desenvolvido para a Polaris Global Strategies Ltd.
 
@@ -11,9 +12,10 @@ Desenvolvido para a Polaris Global Strategies Ltd.
 
 ```
 btc_dashboard/
-├── index.html   → Layout: header, cards, indicadores avançados, gráfico, glossário, footer
+├── index.html   → Layout: header com seletor de ativo, cards, indicadores, gráfico, glossário dinâmico, footer
 ├── style.css    → Tema escuro, cores condicionais, responsividade
-├── app.js       → Lógica completa: fetch das APIs, Chart.js, interatividade, cálculo de Mayer
+├── coins.js     → Registro de moedas: metadados de API + conteúdo educativo por ativo
+├── app.js       → Lógica completa: fetch das APIs, Chart.js, interatividade, indicadores, troca de ativo
 ├── plan.md      → Plano detalhado de desenvolvimento
 └── CLAUDE.md    → Este arquivo
 ```
@@ -24,6 +26,31 @@ btc_dashboard/
 - **Chart.js** (CDN): renderização do gráfico principal
 - **CoinGecko API v3**: dados de preço, variações e dominância
 - **Alternative.me API**: Fear & Greed Index
+- **Binance API**: gráfico histórico e Mayer Multiple
+- **Mempool.space API**: altura do bloco Bitcoin para o contador de halving
+- **Blockchair API** (reservado): altura do bloco para ativos com halving não suportados pelo mempool.space (ex: Zcash)
+
+## Registro de moedas (`coins.js`)
+
+Cada entrada em `COINS` define tudo que varia por ativo:
+
+| Campo | Descrição |
+|---|---|
+| `id` | ID da CoinGecko |
+| `symbol` / `name` / `icon` | Exibição no header |
+| `binancePair` | Par Binance para gráfico e Mayer (ex: `BTCUSDT`) |
+| `dominanceKey` | Chave em `market_cap_percentage` da CoinGecko |
+| `startDate` | Data mínima do histórico disponível |
+| `accentColor` / `accentColorAlpha` | Cor de destaque do ativo |
+| `hasHalving` | Se o card de halving deve ser exibido |
+| `nextHalvingBlock` / `halvingBlockTime` | Dados do próximo halving |
+| `halvingBlockApi` | `'mempool'` \| `'blockchair'` \| `null` |
+| `mayer` | Faixas `{ low, mid, high }` do Múltiplo de Mayer |
+| `mvrvLink` / `mvrvLinkText` | Link externo para MVRV Z-Score |
+| `glossaryIndicators` | Array `{ id, title, html }` — seção "Entenda os Indicadores" |
+| `originSection` | `{ title, items: [{ title, html }] }` — seção de origem do ativo |
+
+Para adicionar um novo ativo, basta inserir uma entrada em `COINS` com todos esses campos preenchidos.
 
 ## Endpoints usados
 

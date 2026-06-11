@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Dashboard de dados do Bitcoin em tempo real — preço, variações, Fear &amp; Greed, Múltiplo de Mayer e dominância de mercado. Desenvolvido pela Polaris Global Strategies.">
+    <meta name="description" content="Dashboard de dados de criptoativos em tempo real — preço, variações, Fear &amp; Greed, Múltiplo de Mayer e dominância de mercado. Desenvolvido pela Polaris Global Strategies.">
     <meta name="theme-color" content="#f7931a">
     <title>Bitcoin Dashboard — Polaris Global Strategies</title>
     <link rel="stylesheet" href="style.css">
@@ -17,12 +17,15 @@
 
         <header>
             <div class="logo">
-                <span class="btc-icon" aria-label="Símbolo do Bitcoin">₿</span>
+                <span class="coin-icon" id="coin-icon" aria-hidden="true">₿</span>
                 <div class="logo-text">
-                    <h1>Bitcoin</h1>
-                    <span class="ticker">BTC</span>
+                    <h1 id="coin-name">Bitcoin</h1>
+                    <span class="ticker" id="coin-ticker">BTC</span>
                 </div>
             </div>
+            <nav class="coin-selector" role="group" aria-label="Selecionar criptoativo">
+                <button class="coin-btn" data-coin="bitcoin" aria-label="Bitcoin">BTC</button>
+            </nav>
             <div class="header-right">
                 <span class="update-label">Atualizado: <span id="last-update">--:--:--</span></span>
                 <button id="theme-toggle" aria-label="Alternar tema claro/escuro">☀️</button>
@@ -92,16 +95,16 @@
                 <button class="period-btn" data-period="max" aria-label="Todo o histórico">ALL</button>
             </div>
             <div class="date-range">
-                <label for="date-from">De: <input type="date" id="date-from" min="2013-04-28" aria-label="Data inicial"></label>
-                <label for="date-to">Até: <input type="date" id="date-to" min="2013-04-28" aria-label="Data final"></label>
+                <label for="date-from">De: <input type="date" id="date-from" aria-label="Data inicial"></label>
+                <label for="date-to">Até: <input type="date" id="date-to" aria-label="Data final"></label>
                 <button id="btn-apply-dates" aria-label="Aplicar intervalo de datas">Aplicar</button>
             </div>
         </div>
 
         <!-- Gráfico principal -->
         <div class="chart-box main-chart-box">
-            <span class="chart-note">Dados históricos em USD · Binance</span>
-            <canvas id="main-chart" role="img" aria-label="Gráfico de preço histórico do Bitcoin"></canvas>
+            <span class="chart-note" id="chart-note">BTC/USD · Binance</span>
+            <canvas id="main-chart" role="img" aria-label="Gráfico de preço histórico"></canvas>
         </div>
 
         <!-- Indicadores avançados -->
@@ -131,7 +134,7 @@
             </div>
 
             <div class="card adv-card">
-                <span class="card-label">Dominância BTC</span>
+                <span class="card-label" id="dominance-label">Dominância BTC</span>
                 <span class="card-value accent dom-value" id="dominance">--</span>
                 <span class="adv-sub">do market cap global em cripto</span>
             </div>
@@ -139,108 +142,32 @@
             <div class="card adv-card mvrv-card">
                 <span class="card-label">MVRV Z-Score</span>
                 <span class="mvrv-note">Indicador on-chain — requer dados proprietários não disponíveis em APIs gratuitas.</span>
-                <a class="mvrv-link" href="https://www.lookintobitcoin.com/charts/mvrv-zscore/" target="_blank" rel="noopener">
+                <a class="mvrv-link" id="mvrv-link" href="https://www.lookintobitcoin.com/charts/mvrv-zscore/" target="_blank" rel="noopener">
                     Ver gráfico em LookIntoBitcoin →
                 </a>
             </div>
 
-            <div class="card adv-card">
+            <div class="card adv-card" id="card-halving">
                 <span class="card-label">Próximo Halving</span>
                 <div class="halving-display">
                     <span class="halving-days" id="halving-days">--</span>
                 </div>
-                <span class="adv-sub" id="halving-block">Bloco -- / 1.050.000</span>
+                <span class="adv-sub" id="halving-block">Bloco --</span>
                 <span class="adv-sub" id="halving-date">Previsão: --</span>
             </div>
 
         </div>
 
-        <!-- Glossário colapsável -->
-        <section class="glossary">
+        <!-- Glossário — Indicadores -->
+        <section class="glossary glossary-indicators">
             <h2 class="section-title">Entenda os Indicadores</h2>
-
-            <details class="glossary-item">
-                <summary>O que é o Fear &amp; Greed Index?</summary>
-                <div class="glossary-body">
-                    <p>Mede o sentimento predominante do mercado de criptomoedas numa escala de 0 a 100. Valores próximos de 0 indicam <strong>Medo Extremo</strong> — os investidores estão nervosos e o preço pode estar deprimido além do que os fundamentos justificam, criando possíveis oportunidades para quem tem visão de longo prazo. Valores próximos de 100 indicam <strong>Ganância Extrema</strong> — o mercado está eufórico e historicamente esse excesso de otimismo precede correções de preço.</p>
-                    <div class="fg-scale">
-                        <span class="scale-item fear-extreme">0–24 · Medo Extremo</span>
-                        <span class="scale-item fear">25–44 · Medo</span>
-                        <span class="scale-item neutral">45–55 · Neutro</span>
-                        <span class="scale-item greed">56–75 · Ganância</span>
-                        <span class="scale-item greed-extreme">76–100 · Ganância Extrema</span>
-                    </div>
-                </div>
-            </details>
-
-            <details class="glossary-item">
-                <summary>O que é o Múltiplo de Mayer?</summary>
-                <div class="glossary-body">
-                    <p>Divide o preço atual do Bitcoin pela sua <strong>Média Móvel de 200 dias (MM200)</strong>. A MM200 é a média dos preços de fechamento dos últimos 200 dias e é amplamente usada como referência de tendência de longo prazo. O múltiplo indica se o preço está "barato" ou "caro" em relação ao seu próprio histórico.</p>
-                    <p>Um múltiplo de <strong>1,0</strong> significa que o preço está exatamente na MM200. Acima de <strong>2,4</strong>, o Bitcoin historicamente entrou em território de sobreaquecimento. Abaixo de <strong>0,8</strong>, historicamente representou zonas de fundo de ciclo. A média histórica do múltiplo é aproximadamente <strong>1,4</strong>.</p>
-                </div>
-            </details>
-
-            <details class="glossary-item">
-                <summary>O que é a Dominância do Bitcoin?</summary>
-                <div class="glossary-body">
-                    <p>É o percentual do valor total de todas as criptomoedas que pertence ao Bitcoin. Quando a dominância está <strong>alta (acima de 60%)</strong>, os investidores estão preferindo o ativo mais estabelecido e seguro do setor — geralmente um sinal de aversão ao risco. Quando a dominância está <strong>baixa</strong>, significa que capital está migrando para altcoins em busca de retornos maiores, fenômeno conhecido como <em>altseason</em>.</p>
-                </div>
-            </details>
-
-            <details class="glossary-item">
-                <summary>O que é o Halving do Bitcoin?</summary>
-                <div class="glossary-body">
-                    <p>O Halving é um evento programado diretamente no código-fonte do Bitcoin que reduz à metade a recompensa recebida pelos mineradores a cada bloco minerado. Ocorre a cada <strong>210.000 blocos</strong> — aproximadamente a cada quatro anos. Essa mecânica garante que a emissão de novos bitcoins desacelere progressivamente até o limite fixo de 21 milhões de unidades, tornando o Bitcoin deflacionário por design. A recompensa atual (desde abril de 2024) é de <strong>3,125 BTC por bloco</strong>; no próximo halving passará a <strong>1,5625 BTC</strong>.</p>
-                    <p>A contagem exibida é calculada a partir da <strong>altura atual da blockchain</strong> — o número total de blocos minerados até agora — subtraída do número do próximo bloco de halving (1.050.000). Multiplicando os blocos restantes pelo tempo médio de <strong>10 minutos por bloco</strong>, obtemos a estimativa de dias. Como a dificuldade de mineração se reajusta automaticamente a cada 2.016 blocos, o tempo médio pode variar ligeiramente, tornando a data uma estimativa, não uma certeza.</p>
-                    <p>Historicamente, os halvings precederam ciclos de alta expressivos: o Bitcoin tende a se apreciar nos 12–18 meses seguintes, pois a oferta de novos BTC é reduzida enquanto a demanda pode permanecer estável ou crescer. Os halvings anteriores ocorreram em novembro de 2012, julho de 2016, maio de 2020 e abril de 2024.</p>
-                </div>
-            </details>
-
-            <details class="glossary-item">
-                <summary>O que é o MVRV Z-Score?</summary>
-                <div class="glossary-body">
-                    <p>Compara o preço de mercado do Bitcoin com o seu <strong>Realized Price</strong> — o preço médio pelo qual cada bitcoin existente mudou de mãos pela última vez na blockchain. O Z-Score mede o quanto o preço atual desvia da média histórica dessa relação.</p>
-                    <p>Quando o Z-Score está <strong>muito negativo ou próximo de zero</strong>, o mercado está vendendo próximo (ou abaixo) do custo médio de aquisição — historicamente uma zona de acumulação. Quando está <strong>acima de 6</strong>, o preço está muito acima do custo médio, o que historicamente coincidiu com topos de ciclo.</p>
-                    <p>Este indicador exige dados on-chain proprietários (o Realized Cap) que não estão disponíveis em APIs gratuitas sem autenticação. Para visualizar o gráfico em tempo real, acesse gratuitamente: <a href="https://www.lookintobitcoin.com/charts/mvrv-zscore/" target="_blank" rel="noopener">LookIntoBitcoin.com</a>.</p>
-                </div>
-            </details>
-
+            <div id="glossary-indicators-content"></div>
         </section>
 
-        <section class="glossary">
-            <h2 class="section-title">Bitcoin: A Ideia Original de Satoshi</h2>
-
-            <details class="glossary-item">
-                <summary>Por que o Bitcoin foi criado?</summary>
-                <div class="glossary-body">
-                    <p>Imagine que você quer pagar alguém pela internet sem usar um banco. Hoje, qualquer transferência digital depende de uma instituição financeira que atua como intermediária: ela confirma que você tem o dinheiro e que a transação aconteceu. Satoshi Nakamoto publicou em 2008 uma proposta para eliminar esse intermediário, criando um sistema em que duas pessoas podem transacionar diretamente, com segurança matemática, sem precisar confiar em ninguém no meio.</p>
-                </div>
-            </details>
-
-            <details class="glossary-item">
-                <summary>O problema do gasto duplo</summary>
-                <div class="glossary-body">
-                    <p>O problema central que Satoshi resolveu chama-se "gasto duplo": como impedir que alguém use o mesmo dinheiro digital duas vezes? Com dinheiro físico isso não existe, pois se você me dá uma nota, não tem mais ela. Com arquivos digitais, copiar é trivial. A solução foi criar um registro público compartilhado (a blockchain), onde cada transação é gravada em ordem cronológica e visível para todos os participantes da rede.</p>
-                </div>
-            </details>
-
-            <details class="glossary-item">
-                <summary>Como funciona a prova de trabalho?</summary>
-                <div class="glossary-body">
-                    <p>Esse registro é mantido por milhares de computadores ao redor do mundo simultaneamente. Para adicionar uma nova página (bloco) ao livro-caixa, é preciso resolver um problema matemático difícil, a chamada prova de trabalho. Isso torna qualquer tentativa de fraude extremamente custosa: para alterar uma transação passada, o fraudador teria que refazer o trabalho de todos os blocos seguintes e ainda superar o poder computacional combinado de toda a rede honesta.</p>
-                </div>
-            </details>
-
-            <details class="glossary-item">
-                <summary>Uma rede sem dono nem autoridade central</summary>
-                <div class="glossary-body">
-                    <p>A rede não tem dono, servidor central nem autoridade. Os participantes entram e saem livremente, e o sistema continua funcionando porque segue uma regra simples: a cadeia mais longa, ou seja, aquela com mais trabalho acumulado, é considerada a verdade. Quem tenta trapacear precisaria controlar mais da metade de todo o poder de processamento do planeta, o que tornaria a fraude menos rentável do que simplesmente participar honestamente.</p>
-                    <p>O resultado é dinheiro que existe apenas como matemática e consenso coletivo: sem banco central, sem intermediário, sem fronteiras. Satoshi chamou isso de "sistema de pagamento eletrônico ponto a ponto", e essa ideia de 9 páginas deu origem a todo o ecossistema de criptoativos que existe hoje.</p>
-                    <p><a href="https://bitcoin.org/bitcoin.pdf" target="_blank" rel="noopener">Ler o whitepaper original (PDF)</a></p>
-                </div>
-            </details>
-
+        <!-- Glossário — Origem do ativo -->
+        <section class="glossary glossary-origin">
+            <h2 class="section-title" id="origin-section-title"></h2>
+            <div id="glossary-origin-content"></div>
         </section>
 
     </div><!-- /.container -->
@@ -252,6 +179,7 @@
         </div>
     </footer>
 
+    <script src="coins.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

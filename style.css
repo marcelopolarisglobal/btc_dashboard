@@ -67,7 +67,7 @@ header {
     gap: 12px;
 }
 
-.btc-icon {
+.coin-icon {
     font-size: 2.6rem;
     color: var(--accent);
     line-height: 1;
@@ -96,6 +96,27 @@ header {
     font-size: 0.78rem;
     color: var(--muted);
 }
+
+.coin-selector {
+    display: flex;
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.coin-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: background var(--transition), color var(--transition);
+}
+
+.coin-btn.active { background: var(--accent); color: var(--accent-text); }
+.coin-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 .currency-toggle {
     display: flex;
