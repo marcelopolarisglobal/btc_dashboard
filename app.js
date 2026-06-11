@@ -23,6 +23,7 @@ let lastPrices      = null;
 let lastChartPeriod = '7';
 let lastCoin        = null;
 let loadGeneration  = 0;
+let jan1Prices      = { usd: null, brl: null };
 
 const SYM    = { usd: '$',    brl: 'R$' };
 const LOCALE = { usd: 'en-US', brl: 'pt-BR' };
@@ -202,10 +203,23 @@ function updateCards(coin, global) {
     setText('marketcap',      sym() + ' ' + fmtLarge(m.market_cap?.[c] ?? 0));
     setText('dominance',      (global?.data?.market_cap_percentage?.[activeCoin.dominanceKey] ?? 0).toFixed(1) + '%');
     setText('last-update',    new Date().toLocaleTimeString('pt-BR'));
-    setVariation('change24h', m.price_change_percentage_24h);
-    setVariation('change7d',  m.price_change_percentage_7d);
-    setVariation('change30d', m.price_change_percentage_30d);
-    setVariation('change1y',  m.price_change_percentage_1y);
+    setVariation('change24h', m.price_change_percentage_24h_in_currency?.[c] ?? m.price_change_percentage_24h);
+    setVariation('change7d',  m.price_change_percentage_7d_in_currency?.[c]  ?? m.price_change_percentage_7d);
+    setVariation('change30d', m.price_change_percentage_30d_in_currency?.[c] ?? m.price_change_percentage_30d);
+    const currentPrice = m.current_price?.[c];
+    const jan1Price    = jan1Prices[c];
+    setVariation('changeYtd', (currentPrice != null && jan1Price)
+        ? ((currentPrice - jan1Price) / jan1Price) * 100
+        : null);
+}
+
+async function fetchJan1Prices(coinId) {
+    const year = new Date().getFullYear();
+    const data = await get(`${API}/coins/${coinId}/history?date=01-01-${year}&localization=false`);
+    jan1Prices = {
+        usd: data?.market_data?.current_price?.usd ?? null,
+        brl: data?.market_data?.current_price?.brl ?? null,
+    };
 }
 
 // ── Fear & Greed ──────────────────────────────────────────────────────────────
@@ -398,6 +412,7 @@ function switchCoin(id) {
     activeCoin    = COINS[id];
     currency      = 'usd';
     currentPeriod = '7';
+    jan1Prices    = { usd: null, brl: null };
     localStorage.setItem('btc-dashboard-coin', id);
 
     document.querySelectorAll('.coin-btn').forEach(b => b.classList.remove('active'));
@@ -519,7 +534,11 @@ async function loadAll() {
 
     const [chartResult, cardsResult] = await Promise.allSettled([
         fetchBinanceChart(currentPeriod),
-        Promise.all([fetchCoin(), fetchGlobal()])
+        Promise.all([
+            fetchCoin(),
+            fetchGlobal(),
+            jan1Prices.usd === null ? fetchJan1Prices(activeCoin.id) : Promise.resolve()
+        ])
     ]);
 
     if (gen !== loadGeneration) return;
