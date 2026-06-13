@@ -27,7 +27,7 @@ Versão 2.0 · Junho 2026
 
 O Crypto Dashboard é uma aplicação web de página única que exibe dados de mercado de criptoativos em tempo real. Desenvolvido para a Polaris Global Strategies Ltd., o projeto apresenta preços, variações históricas, indicadores avançados de análise de mercado e um gráfico interativo.
 
-O ativo exibido é selecionável na barra superior. Cada ativo possui seus próprios indicadores, parâmetros de API e seções educativas — nada de um ativo aparece quando outro está selecionado. Atualmente os ativos disponíveis são **Bitcoin (BTC)**, **Zcash (ZEC)** e **Ethereum (ETH)**; a arquitetura está preparada para receber novos ativos (ex: Solana) sem alterações estruturais.
+O ativo exibido é selecionável na barra superior. Cada ativo possui seus próprios indicadores, parâmetros de API e seções educativas — nada de um ativo aparece quando outro está selecionado. Atualmente os ativos disponíveis são **Bitcoin (BTC)**, **Zcash (ZEC)**, **Ethereum (ETH)** e **Solana (SOL)**; a arquitetura está preparada para receber novos ativos sem alterações estruturais.
 
 **Princípio de design central:** zero dependências instaladas e zero processo de build. O projeto consiste em quatro arquivos estáticos (`index.html`, `style.css`, `coins.js`, `app.js`) que funcionam diretamente no navegador, sem servidor, sem Node.js, sem compilação.
 
@@ -538,6 +538,8 @@ Nenhuma outra alteração é necessária.
 **Nota sobre Zcash:** ZEC já está implementado. Usa `halvingBlockApi: 'blockchair'`, halving a cada 840.000 blocos (~90 seg/bloco, média observada), próximo halving no bloco 4.200.000.
 
 **Nota sobre Ethereum:** ETH já está implementado, com `startDate: '2015-07-30'` (lançamento da mainnet). Por ser **Proof of Stake** desde *The Merge* (setembro de 2022), usa `hasHalving: false` — o card de halving fica oculto e nenhuma API de altura de bloco é chamada. Os demais indicadores (Fear & Greed, Mayer, Dominância, MVRV) e o gráfico funcionam sem ajuste de código.
+
+**Nota sobre Solana:** SOL já está implementado, com `startDate: '2020-08-11'` (início do par SOLUSDT na Binance) e `dominanceKey: 'sol'`. Por usar **Proof of Stake combinado com Proof of History**, não possui halving — `hasHalving: false`, com o card de halving oculto. A cor de destaque é o roxo da marca (`#9945FF`) e o MVRV aponta para o Messari, já que o LookIntoBitcoin não cobre o ativo. Nenhum ajuste de `app.js` ou `style.css` foi necessário.
 
 ---
 

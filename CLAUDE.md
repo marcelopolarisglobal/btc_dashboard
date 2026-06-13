@@ -52,6 +52,8 @@ Cada entrada em `COINS` define tudo que varia por ativo:
 
 Para adicionar um novo ativo, basta inserir uma entrada em `COINS` com todos esses campos preenchidos.
 
+Ativos implementados: **Bitcoin (BTC)**, **Zcash (ZEC)**, **Ethereum (ETH)** e **Solana (SOL)**. Solana usa `hasHalving: false` (Proof of Stake + Proof of History), `startDate: '2020-08-11'`, `dominanceKey: 'sol'`, cor de destaque `#9945FF` e MVRV via Messari.
+
 ## Endpoints usados
 
 ```

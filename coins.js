@@ -257,5 +257,95 @@ const COINS = {
                 }
             ]
         }
+    },
+
+    solana: {
+        id:               'solana',
+        symbol:           'SOL',
+        name:             'Solana',
+        icon:             '◎',
+        binancePair:      'SOLUSDT',
+        dominanceKey:     'sol',
+        startDate:        '2020-08-11',
+        accentColor:      '#9945FF',
+        accentColorAlpha: { light: 'rgba(153,69,255,0.10)', dark: 'rgba(153,69,255,0.07)' },
+        hasHalving:       false,
+        nextHalvingBlock: null,
+        halvingBlockTime: null,
+        halvingBlockApi:  null,
+        mayer:            { low: 0.8, mid: 1.0, high: 2.4 },
+        mvrvLink:         'https://messari.io/asset/solana/metrics',
+        mvrvLinkText:     'Ver métricas no Messari →',
+
+        glossaryIndicators: [
+            {
+                id:    'fear-greed',
+                title: 'O que é o Fear &amp; Greed Index?',
+                html:  `<p>Mede o sentimento predominante do mercado de criptomoedas numa escala de 0 a 100. Valores próximos de 0 indicam <strong>Medo Extremo</strong> — os investidores estão nervosos e o preço pode estar deprimido além do que os fundamentos justificam, criando possíveis oportunidades para quem tem visão de longo prazo. Valores próximos de 100 indicam <strong>Ganância Extrema</strong> — o mercado está eufórico e historicamente esse excesso de otimismo precede correções de preço.</p>
+                <p>O índice é calculado com base em volatilidade, volume de mercado, redes sociais, dominância e tendências de busca. É um indicador global do mercado cripto — não é específico do Solana, mas reflete o humor geral do ambiente em que a SOL está inserida.</p>
+                <div class="fg-scale">
+                    <span class="scale-item fear-extreme">0–24 · Medo Extremo</span>
+                    <span class="scale-item fear">25–44 · Medo</span>
+                    <span class="scale-item neutral">45–55 · Neutro</span>
+                    <span class="scale-item greed">56–75 · Ganância</span>
+                    <span class="scale-item greed-extreme">76–100 · Ganância Extrema</span>
+                </div>`
+            },
+            {
+                id:    'mayer',
+                title: 'O que é o Múltiplo de Mayer?',
+                html:  `<p>Divide o preço atual do Solana pela sua <strong>Média Móvel de 200 dias (MM200)</strong>. A MM200 é a média dos preços de fechamento dos últimos 200 dias, calculada a partir dos dados do par SOLUSDT na Binance, e funciona como referência de tendência de longo prazo.</p>
+                <p>Um múltiplo de <strong>1,0</strong> significa que o preço está exatamente na MM200. Valores <strong>abaixo de 0,8</strong> indicam que a SOL está sendo negociada bem abaixo da sua média histórica recente — zonas que historicamente representaram oportunidades de acumulação. Valores <strong>acima de 2,4</strong> sugerem sobreaquecimento de curto prazo.</p>`
+            },
+            {
+                id:    'dominance',
+                title: 'O que é a Dominância do Solana?',
+                html:  `<p>É o percentual do valor total de todas as criptomoedas que pertence ao Solana. A SOL é uma das maiores <em>altcoins</em> (criptomoedas que não são o Bitcoin) e figura consistentemente entre os ativos de maior valor de mercado, de modo que sua dominância é uma das mais relevantes fora de Bitcoin e Ethereum.</p>
+                <p>Aumentos na dominância da SOL costumam acompanhar períodos de maior apetite por risco, quando capital migra em busca de redes rápidas e de baixo custo para aplicativos, contratos inteligentes e finanças descentralizadas.</p>`
+            },
+            {
+                id:    'mvrv',
+                title: 'O que é o MVRV Z-Score?',
+                html:  `<p>Compara o preço de mercado do Solana com o seu <strong>Realized Price</strong> — o preço médio pelo qual cada SOL existente mudou de mãos pela última vez na blockchain. O Z-Score mede o quanto o preço atual desvia da média histórica dessa relação.</p>
+                <p>Quando o Z-Score está <strong>próximo de zero ou negativo</strong>, o mercado está vendendo próximo do custo médio de aquisição — historicamente uma zona de acumulação. Quando está <strong>elevado</strong>, o preço está muito acima do custo médio, o que historicamente precedeu topos de ciclo.</p>
+                <p>Este indicador exige dados on-chain (o Realized Cap) que não estão disponíveis em APIs gratuitas sem autenticação. Para visualizar métricas do Solana em tempo real, acesse: <a href="https://messari.io/asset/solana/metrics" target="_blank" rel="noopener">Messari.io</a>.</p>`
+            }
+        ],
+
+        originSection: {
+            title: 'Solana: A Blockchain de Alta Velocidade',
+            items: [
+                {
+                    title: 'De onde veio o Solana?',
+                    html:  `<p>O Solana foi proposto em <strong>2017</strong> pelo engenheiro <strong>Anatoly Yakovenko</strong>, ex-Qualcomm, em um whitepaper que descrevia uma forma de fazer uma blockchain processar milhares de transações por segundo. A rede principal (<em>mainnet beta</em>) foi lançada em <strong>16 de março de 2020</strong>, desenvolvida pela <strong>Solana Labs</strong> e mantida pela <strong>Solana Foundation</strong>.</p>
+                    <p>O token nativo é o <strong>SOL</strong> — o ativo exibido neste dashboard. Ele tem duas funções centrais: pagar as taxas de transação da rede e ser depositado pelos validadores como garantia no processo de <em>staking</em>, que sustenta a segurança da blockchain.</p>`
+                },
+                {
+                    title: 'O que é o Proof of History (PoH)?',
+                    html:  `<p>A grande inovação do Solana é o <strong>Proof of History</strong> (Prova de Histórico). Em blockchains tradicionais, os computadores da rede precisam "conversar" entre si para concordar sobre a ordem e o horário de cada transação — um processo que consome tempo. O PoH resolve isso criando um <strong>relógio criptográfico</strong>: uma sequência matemática contínua que carimba cada transação com uma marca temporal verificável <em>antes</em> de o consenso acontecer.</p>
+                    <p>Com a ordem do tempo já estabelecida por esse relógio, os validadores não precisam negociar quando cada evento ocorreu. Isso, combinado com um motor de execução chamado <strong>Sealevel</strong> — que processa várias transações em <strong>paralelo</strong> em vez de uma de cada vez —, é o que permite a vazão extremamente alta da rede.</p>`
+                },
+                {
+                    title: 'Velocidade e custo: a vantagem sobre o Ethereum',
+                    html:  `<p>O Solana foi projetado para desempenho bruto. Seus blocos são produzidos a cada <strong>~400 milissegundos</strong>, contra cerca de <strong>12 segundos</strong> do Ethereum, e a rede processa milhares de transações por segundo com taxas de <strong>frações de centavo de dólar</strong> — enquanto no Ethereum as taxas de <em>gas</em> são variáveis e, em períodos de congestionamento, historicamente chegaram a vários dólares por operação.</p>
+                    <p>A diferença de estratégia é estrutural: o Solana é <strong>monolítico</strong>, ou seja, tenta fazer tudo rápido em uma única camada principal; o Ethereum adotou uma abordagem de <strong>camadas adicionais (camada‑2)</strong>, redes construídas por cima para ganhar escala. Essa velocidade tem um custo honesto de mencionar: validar a rede Solana exige <strong>hardware mais potente</strong>, o que tende a concentrar mais os participantes, e a rede já enfrentou <strong>episódios de instabilidade e paradas</strong> ao longo de sua história.</p>`
+                },
+                {
+                    title: 'Principais diferenças para o Bitcoin',
+                    html:  `<p>O <strong>Bitcoin</strong> foi desenhado para ser dinheiro digital escasso: usa <strong>Proof of Work</strong> (mineração por gasto de energia) e tem oferta fixa de <strong>21 milhões</strong> de unidades. O <strong>Solana</strong> é uma plataforma programável de aplicativos: usa <strong>Proof of Stake combinado com Proof of History</strong>, sem mineração e sem teto rígido de oferta.</p>
+                    <p>Em vez de um limite fixo, o SOL segue um modelo de <strong>inflação decrescente</strong> — a emissão de novas moedas começa mais alta e cai gradualmente ano a ano. Além disso, <strong>50% de cada taxa de transação é queimada</strong> (destruída permanentemente), o que contrabalança parte dessa emissão. São propósitos distintos: o Bitcoin prioriza ser reserva de valor previsível; o Solana prioriza velocidade e capacidade de rodar aplicativos.</p>`
+                },
+                {
+                    title: 'Principais diferenças para o Ethereum',
+                    html:  `<p>Solana e Ethereum competem no mesmo território — ambos são plataformas de <strong>contratos inteligentes</strong>, programas que rodam na blockchain sem intermediário. A diferença está em <em>como</em> executam esses programas. O Ethereum processa transações em <strong>sequência</strong>, uma após a outra, na sua máquina virtual (a EVM), com programas escritos em <strong>Solidity</strong>. O Solana processa transações que não dependem umas das outras em <strong>paralelo</strong> (via Sealevel), com programas escritos em <strong>Rust e C</strong>.</p>
+                    <p>Na prática, o Solana troca parte da descentralização e da simplicidade do Ethereum por <strong>desempenho bruto</strong>: mais transações, mais rápido e mais barato, em uma única camada. O Ethereum, por sua vez, aposta em um ecossistema maior e mais maduro de aplicativos e em escalar por meio de camadas‑2. São visões complementares de como uma plataforma descentralizada deve crescer.</p>`
+                },
+                {
+                    title: 'Documentação oficial',
+                    html:  `<p>Para aprofundar o funcionamento técnico da rede, o ecossistema de aplicativos e o processo de <em>staking</em>, a fonte primária é a documentação oficial mantida pela Solana Foundation.</p>
+                    <p><a href="https://solana.com/docs" target="_blank" rel="noopener">Documentação oficial do Solana</a> · <a href="https://solana.com/solana-whitepaper.pdf" target="_blank" rel="noopener">Whitepaper original (PDF)</a></p>`
+                }
+            ]
+        }
     }
 };
