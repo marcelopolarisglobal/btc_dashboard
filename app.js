@@ -110,6 +110,8 @@ async function fetchBinanceMayer() {
     return klinesToPrices(klines);
 }
 
+const fetchBinanceTicker = () => get(`${BINANCE}/ticker/24hr?symbol=${activeCoin.binancePair}`);
+
 // ── Period helpers ────────────────────────────────────────────────────────────
 
 function resolveDays(period) {
@@ -193,26 +195,30 @@ function setVariation(id, value) {
     el.className = 'card-value ' + (value >= 0 ? 'positive' : 'negative');
 }
 
-function updateCards(coin, global) {
+function updateLiveCards(ticker) {
+    if (!ticker) return;
+    const rate     = currency === 'brl' ? usdToBrl : 1;
+    const priceUsd = parseFloat(ticker.lastPrice);
+    setText('price',          sym() + ' ' + fmtPrice(priceUsd * rate));
+    setText('high24h',        sym() + ' ' + fmtPrice(parseFloat(ticker.highPrice) * rate));
+    setText('low24h',         sym() + ' ' + fmtPrice(parseFloat(ticker.lowPrice) * rate));
+    setText('last-update',    new Date().toLocaleTimeString('pt-BR'));
+    setVariation('change24h', parseFloat(ticker.priceChangePercent));
+    setVariation('changeYtd', jan1Prices.usd
+        ? ((priceUsd - jan1Prices.usd) / jan1Prices.usd) * 100
+        : null);
+}
+
+function updateSlowCards(coin, global) {
     const m = coin?.market_data;
     const c = currency;
     if (!m) return;
-    setText('price',          sym() + ' ' + fmtPrice(m.current_price?.[c] ?? 0));
-    setText('high24h',        sym() + ' ' + fmtPrice(m.high_24h?.[c] ?? 0));
-    setText('low24h',         sym() + ' ' + fmtPrice(m.low_24h?.[c] ?? 0));
     setText('volume',         sym() + ' ' + fmtLarge(m.total_volume?.[c] ?? 0));
     setText('marketcap',      sym() + ' ' + fmtLarge(m.market_cap?.[c] ?? 0));
     const dom = global?.data?.market_cap_percentage?.[activeCoin.dominanceKey];
     setText('dominance',      dom != null ? dom.toFixed(1) + '%' : 'N/D');
-    setText('last-update',    new Date().toLocaleTimeString('pt-BR'));
-    setVariation('change24h', m.price_change_percentage_24h_in_currency?.[c] ?? m.price_change_percentage_24h);
     setVariation('change7d',  m.price_change_percentage_7d_in_currency?.[c]  ?? m.price_change_percentage_7d);
     setVariation('change30d', m.price_change_percentage_30d_in_currency?.[c] ?? m.price_change_percentage_30d);
-    const currentPrice = m.current_price?.[c];
-    const jan1Price    = jan1Prices[c];
-    setVariation('changeYtd', (currentPrice != null && jan1Price)
-        ? ((currentPrice - jan1Price) / jan1Price) * 100
-        : null);
 }
 
 async function fetchJan1Prices(coinId) {
@@ -499,10 +505,18 @@ async function loadAdvancedIndicators(gen) {
 
 async function refreshCards() {
     try {
-        const [coin, global] = await Promise.all([fetchCoin(), fetchGlobal()]);
-        updateCards(coin, global);
+        updateLiveCards(await fetchBinanceTicker());
     } catch (e) {
-        console.warn('[Dashboard] Refresh dos cards falhou:', e.message);
+        console.warn('[Dashboard] Refresh ao vivo (Binance) falhou:', e.message);
+    }
+    try {
+        const [coin, global] = await Promise.all([fetchCoin(), fetchGlobal()]);
+        const pu = coin?.market_data?.current_price?.usd;
+        const pb = coin?.market_data?.current_price?.brl;
+        if (pu && pb) usdToBrl = pb / pu;
+        updateSlowCards(coin, global);
+    } catch (e) {
+        console.warn('[Dashboard] Refresh dos cards (CoinGecko) falhou:', e.message);
     }
 }
 
@@ -535,8 +549,9 @@ async function loadAll() {
     const gen = ++loadGeneration;
     setLoading(true);
 
-    const [chartResult, cardsResult] = await Promise.allSettled([
+    const [chartResult, tickerResult, cardsResult] = await Promise.allSettled([
         fetchBinanceChart(currentPeriod),
+        fetchBinanceTicker(),
         Promise.all([
             fetchCoin(),
             fetchGlobal(),
@@ -551,9 +566,15 @@ async function loadAll() {
         const pu = coin?.market_data?.current_price?.usd;
         const pb = coin?.market_data?.current_price?.brl;
         if (pu && pb) usdToBrl = pb / pu;
-        updateCards(coin, global);
+        updateSlowCards(coin, global);
     } else {
         console.warn('[Dashboard] CoinGecko indisponível:', cardsResult.reason.message);
+    }
+
+    if (tickerResult.status === 'fulfilled') {
+        updateLiveCards(tickerResult.value);
+    } else {
+        console.warn('[Dashboard] Ticker ao vivo (Binance) indisponível:', tickerResult.reason.message);
     }
 
     if (chartResult.status === 'fulfilled') {

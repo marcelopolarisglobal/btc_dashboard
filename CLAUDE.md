@@ -26,7 +26,7 @@ btc_dashboard/
 - **Chart.js** (CDN): renderização do gráfico principal
 - **CoinGecko API v3**: dados de preço, variações e dominância
 - **Alternative.me API**: Fear & Greed Index
-- **Binance API**: gráfico histórico e Mayer Multiple
+- **Binance API**: gráfico histórico, Mayer Multiple e dados ao vivo dos cards (preço, máx/mín 24h, variação 24h, YTD)
 - **Mempool.space API**: altura do bloco Bitcoin para o contador de halving
 - **Blockchair API** (reservado): altura do bloco para ativos com halving não suportados pelo mempool.space (ex: Zcash)
 
@@ -60,7 +60,10 @@ Ativos implementados: **Bitcoin (BTC)**, **Zcash (ZEC)**, **Ethereum (ETH)** e *
 Base CoinGecko: https://api.coingecko.com/api/v3
 
 GET /coins/bitcoin?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false
-  → preço atual, variações 24h/7d/30d/1y, volume, market cap, máx/mín 24h
+  → dados "lentos" dos cards: volume, market cap, variações 7d/30d e taxa USD→BRL (usdToBrl)
+
+GET /coins/bitcoin/history?date=DD-MM-YYYY&localization=false
+  → preço de 01/01 do ano corrente (base do cálculo da variação YTD)
 
 GET /coins/bitcoin/market_chart?vs_currency=usd&days=7
   → array de [timestamp, preço] — aceita days=1|7|30|90|365|1825|max
@@ -70,6 +73,11 @@ GET /coins/bitcoin/market_chart/range?vs_currency=usd&from=UNIX&to=UNIX
 
 GET /global
   → dominância de mercado do BTC (market_cap_percentage.btc)
+
+Base Binance: https://api.binance.com/api/v3
+
+GET /ticker/24hr?symbol=BTCUSDT
+  → dados ao vivo dos cards: lastPrice, highPrice, lowPrice, priceChangePercent (valores em USD)
 
 Base Alternative.me: https://api.alternative.me
 
@@ -131,6 +139,7 @@ GET /fng/?limit=1
 ## Comportamentos esperados
 
 - Cards atualizam automaticamente a cada **60 segundos**
+- **Sourcing híbrido dos cards** (`updateLiveCards` × `updateSlowCards` em `app.js`): os dados ao vivo (preço, máx/mín 24h, variação 24h, YTD) vêm da Binance (`fetchBinanceTicker`), mesma fonte rápida do gráfico; os dados lentos (volume, market cap, dominância, variações 7d/30d) vêm da CoinGecko. As duas fontes são buscadas em blocos independentes, então uma falha/429 da CoinGecko não impede a atualização dos números ao vivo. Valores em USD da Binance são convertidos para BRL via `usdToBrl`.
 - Mayer Multiple recalculado a cada atualização (usa histórico 200 dias)
 - Fear & Greed atualizado junto com os cards
 - Seletor de período: 8 botões rápidos (1D 7D 1M 3M YTD 1A 5A ALL) + inputs de data
