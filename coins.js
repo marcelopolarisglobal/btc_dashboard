@@ -166,5 +166,96 @@ const COINS = {
                 }
             ]
         }
+    },
+
+    ethereum: {
+        id:               'ethereum',
+        symbol:           'ETH',
+        name:             'Ethereum',
+        icon:             'Ξ',
+        binancePair:      'ETHUSDT',
+        dominanceKey:     'eth',
+        startDate:        '2015-07-30',
+        accentColor:      '#627eea',
+        accentColorAlpha: { light: 'rgba(98,126,234,0.10)', dark: 'rgba(98,126,234,0.07)' },
+        hasHalving:       false,
+        nextHalvingBlock: null,
+        halvingBlockTime: null,
+        halvingBlockApi:  null,
+        mayer:            { low: 0.8, mid: 1.0, high: 2.4 },
+        mvrvLink:         'https://www.lookintobitcoin.com/charts/ethereum-mvrv-zscore/',
+        mvrvLinkText:     'Ver gráfico em LookIntoBitcoin →',
+
+        glossaryIndicators: [
+            {
+                id:    'fear-greed',
+                title: 'O que é o Fear &amp; Greed Index?',
+                html:  `<p>Mede o sentimento predominante do mercado de criptomoedas numa escala de 0 a 100. Valores próximos de 0 indicam <strong>Medo Extremo</strong> — os investidores estão nervosos e o preço pode estar deprimido além do que os fundamentos justificam, criando possíveis oportunidades para quem tem visão de longo prazo. Valores próximos de 100 indicam <strong>Ganância Extrema</strong> — o mercado está eufórico e historicamente esse excesso de otimismo precede correções de preço.</p>
+                <p>O índice é calculado com base em volatilidade, volume de mercado, redes sociais, dominância e tendências de busca. É um indicador global do mercado cripto — não é específico do Ethereum, mas reflete o humor geral do ambiente em que o ETH está inserido.</p>
+                <div class="fg-scale">
+                    <span class="scale-item fear-extreme">0–24 · Medo Extremo</span>
+                    <span class="scale-item fear">25–44 · Medo</span>
+                    <span class="scale-item neutral">45–55 · Neutro</span>
+                    <span class="scale-item greed">56–75 · Ganância</span>
+                    <span class="scale-item greed-extreme">76–100 · Ganância Extrema</span>
+                </div>`
+            },
+            {
+                id:    'mayer',
+                title: 'O que é o Múltiplo de Mayer?',
+                html:  `<p>Divide o preço atual do Ethereum pela sua <strong>Média Móvel de 200 dias (MM200)</strong>. A MM200 é a média dos preços de fechamento dos últimos 200 dias, calculada a partir dos dados do par ETHUSDT na Binance, e funciona como referência de tendência de longo prazo.</p>
+                <p>Um múltiplo de <strong>1,0</strong> significa que o preço está exatamente na MM200. Valores <strong>abaixo de 0,8</strong> indicam que o ETH está sendo negociado bem abaixo da sua média histórica recente — zonas que historicamente representaram oportunidades de acumulação. Valores <strong>acima de 2,4</strong> sugerem sobreaquecimento de curto prazo.</p>`
+            },
+            {
+                id:    'dominance',
+                title: 'O que é a Dominância do Ethereum?',
+                html:  `<p>É o percentual do valor total de todas as criptomoedas que pertence ao Ethereum. O ETH é a segunda maior criptomoeda do mundo e a maior das chamadas <em>altcoins</em> (toda criptomoeda que não é o Bitcoin), de modo que sua dominância costuma ser a segunda mais alta do mercado, atrás apenas do Bitcoin.</p>
+                <p>Aumentos na dominância do ETH frequentemente acompanham períodos de maior apetite por risco, quando capital migra do Bitcoin para o ecossistema de aplicativos, contratos inteligentes e finanças descentralizadas construído sobre o Ethereum.</p>`
+            },
+            {
+                id:    'mvrv',
+                title: 'O que é o MVRV Z-Score?',
+                html:  `<p>Compara o preço de mercado do Ethereum com o seu <strong>Realized Price</strong> — o preço médio pelo qual cada ETH existente mudou de mãos pela última vez na blockchain. O Z-Score mede o quanto o preço atual desvia da média histórica dessa relação.</p>
+                <p>Quando o Z-Score está <strong>próximo de zero ou negativo</strong>, o mercado está vendendo próximo do custo médio de aquisição — historicamente uma zona de acumulação. Quando está <strong>elevado</strong>, o preço está muito acima do custo médio, o que historicamente precedeu topos de ciclo.</p>
+                <p>Este indicador exige dados on-chain proprietários (o Realized Cap) que não estão disponíveis em APIs gratuitas sem autenticação. Para visualizar o gráfico em tempo real, acesse gratuitamente: <a href="https://www.lookintobitcoin.com/charts/ethereum-mvrv-zscore/" target="_blank" rel="noopener">LookIntoBitcoin.com</a>.</p>`
+            }
+        ],
+
+        originSection: {
+            title: 'Ethereum: O Computador Mundial Programável',
+            items: [
+                {
+                    title: 'O que é o Ethereum e por que foi criado?',
+                    html:  `<p>O Ethereum foi proposto em 2013 pelo programador <strong>Vitalik Buterin</strong> e lançado em <strong>30 de julho de 2015</strong>. Se o Bitcoin foi criado para ser "dinheiro digital" — uma forma de transferir valor sem bancos —, o Ethereum nasceu com uma ambição mais ampla: ser uma <strong>plataforma programável</strong>, um "computador mundial" descentralizado onde qualquer pessoa pode publicar aplicativos que rodam exatamente como foram escritos.</p>
+                    <p>Em vez de um único caso de uso (pagamentos), o Ethereum oferece uma base sobre a qual desenvolvedores constroem programas que funcionam sem servidor central, sem dono e sem a possibilidade de serem censurados ou desligados por uma única autoridade. É essa flexibilidade que transformou o Ethereum no alicerce de boa parte do ecossistema cripto atual.</p>`
+                },
+                {
+                    title: "O que é o Ether (ETH) e o que é 'gas'?",
+                    html:  `<p>O <strong>Ether (ETH)</strong> é o token nativo do Ethereum — o ativo que aparece neste dashboard. Ele tem duas funções principais: serve como reserva de valor e meio de troca, como o Bitcoin, mas também é o "combustível" que paga pela execução de operações na rede.</p>
+                    <p>Cada operação — enviar ETH, executar um contrato, registrar um token — consome uma quantidade de <strong>gas</strong>, e o usuário paga essa taxa em ETH. Quanto mais congestionada a rede, mais cara fica a taxa, num sistema de leilão por espaço nos blocos. Desde uma atualização de 2021 (<em>EIP-1559</em>), parte de cada taxa paga é <strong>queimada</strong> — destruída permanentemente —, o que reduz a oferta de ETH em circulação e pode, em períodos de uso intenso, tornar o Ether deflacionário.</p>`
+                },
+                {
+                    title: 'O que são smart contracts?',
+                    html:  `<p>Os <strong>contratos inteligentes</strong> (<em>smart contracts</em>) são a grande inovação do Ethereum. São programas armazenados na blockchain que executam regras automaticamente quando determinadas condições são atendidas — a lógica "se isto acontecer, então faça aquilo" — sem precisar de um intermediário humano para garantir o cumprimento.</p>
+                    <p>Esses programas rodam em um ambiente padronizado chamado <strong>Ethereum Virtual Machine (EVM)</strong>, replicado em milhares de computadores ao redor do mundo. Como o código é público e executado por toda a rede, ninguém pode alterá-lo unilateralmente nem impedir sua execução. É isso que permite construir, por exemplo, um sistema de empréstimo que libera fundos automaticamente quando uma garantia é depositada, sem banco no meio.</p>`
+                },
+                {
+                    title: 'Proof of Stake x Proof of Work',
+                    html:  `<p>Para registrar transações de forma confiável, toda blockchain precisa de um mecanismo de consenso. O <strong>Bitcoin usa Proof of Work (Prova de Trabalho)</strong>: mineradores competem gastando enormes quantidades de energia elétrica para resolver cálculos e ganhar o direito de adicionar o próximo bloco.</p>
+                    <p>O Ethereum começou também em Proof of Work, mas em <strong>setembro de 2022</strong>, num evento chamado <em>The Merge</em>, migrou para <strong>Proof of Stake (Prova de Participação)</strong>. Nesse modelo não há mineração: participantes chamados <strong>validadores</strong> depositam ETH como garantia — um processo conhecido como <em>staking</em> — e são sorteados para validar blocos. Quem age de forma desonesta perde parte do ETH depositado. A mudança reduziu o consumo de energia da rede em cerca de <strong>99,9%</strong>.</p>
+                    <p>Como não há mineradores recebendo recompensa por bloco no mesmo modelo do Bitcoin, o Ethereum <strong>não tem halving</strong> — por isso este dashboard não exibe a contagem regressiva de halving para o ETH.</p>`
+                },
+                {
+                    title: 'Principais diferenças para o Bitcoin',
+                    html:  `<p>Bitcoin e Ethereum são frequentemente comparados, mas têm propósitos distintos. O <strong>Bitcoin</strong> foi desenhado para ser dinheiro digital escasso: tem oferta fixa de <strong>21 milhões</strong> de unidades e usa Proof of Work. O <strong>Ethereum</strong> é uma plataforma de aplicativos: usa Proof of Stake e <strong>não tem um teto rígido de oferta</strong>, embora a queima de taxas (EIP-1559) possa, em momentos de uso intenso, reduzir a quantidade de ETH em circulação.</p>
+                    <p>Em resumo: o Bitcoin se concentra em ser a forma mais segura e previsível de reserva de valor; o Ethereum prioriza a flexibilidade para servir de base a contratos inteligentes, tokens e aplicativos descentralizados. São abordagens complementares, não necessariamente concorrentes.</p>`
+                },
+                {
+                    title: 'Stablecoins, tokens e NFTs sobre o Ethereum',
+                    html:  `<p>Boa parte do valor do ecossistema cripto não está em moedas próprias, mas em <strong>ativos registrados sobre o Ethereum</strong> por meio de contratos inteligentes que seguem padrões técnicos abertos. O padrão <strong>ERC-20</strong> define tokens <em>fungíveis</em> (intercambiáveis entre si), categoria que inclui milhares de projetos e, principalmente, as <strong>stablecoins</strong> — tokens atrelados ao valor de uma moeda tradicional, como o dólar. As mais conhecidas são a <strong>USDT</strong> (Tether) e a <strong>USDC</strong>, amplamente usadas para transacionar sem a volatilidade típica das criptomoedas.</p>
+                    <p>Já os padrões <strong>ERC-721</strong> e <strong>ERC-1155</strong> definem os <strong>NFTs</strong> (<em>non-fungible tokens</em>): tokens <em>únicos</em>, em que cada unidade é distinta e indivisível, usados para representar a propriedade de itens como arte digital, colecionáveis e itens de jogos. Sobre essa mesma base também se construiu o universo das <strong>finanças descentralizadas (DeFi)</strong> — empréstimos, câmbio e investimentos operados inteiramente por contratos inteligentes, sem instituições financeiras no meio.</p>`
+                }
+            ]
+        }
     }
 };
