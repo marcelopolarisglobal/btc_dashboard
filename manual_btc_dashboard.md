@@ -255,7 +255,7 @@ As variações percentuais de 24h, 7 dias e 30 dias refletem a moeda selecionada
 
 ### Seletor de moeda (USD / BRL)
 
-Botões no header alternam entre dólar americano e real brasileiro. A troca recarrega todos os dados via `loadAll()`. O gráfico principal permanece sempre em USD (dados da Binance não têm conversão direta para BRL).
+Botões no header alternam entre dólar americano e real brasileiro. A troca recarrega todos os dados via `loadAll()`. O gráfico converte os preços Binance (sempre em USD) para BRL aplicando a taxa de câmbio implícita calculada a partir dos preços do CoinGecko (`current_price.brl / current_price.usd`), armazenada na variável `usdToBrl`.
 
 ### Tema claro / escuro
 
@@ -356,6 +356,7 @@ let lastChartPeriod = '7';                     // período do último gráfico r
 let lastCoin        = null;                    // ativo do último gráfico renderizado
 let loadGeneration  = 0;                       // contador para cancelar fetches obsoletos
 let jan1Prices      = { usd: null, brl: null }; // preço em 01/01 para cálculo YTD
+let usdToBrl        = 1;                       // taxa de câmbio USD→BRL (atualizada pelo CoinGecko)
 ```
 
 ### Cancelamento de requisições em voo: `loadGeneration`
@@ -411,6 +412,8 @@ const [chartResult, cardsResult] = await Promise.allSettled([
 ```
 
 `Promise.allSettled()` lança as requisições em paralelo e aguarda todas terminarem, independentemente de falhas. Se a Binance estiver lenta mas a CoinGecko responder rápido, os cards já aparecem enquanto o gráfico ainda carrega. O fetch do preço de 01/01 (`fetchJan1Prices`) só é disparado quando `jan1Prices.usd === null` — ou seja, na carga inicial e ao trocar de ativo, nunca no refresh de 60 segundos.
+
+O bloco de cards é processado **antes** do bloco do gráfico dentro de `loadAll()`. Isso garante que `usdToBrl` esteja atualizado quando `buildChart()` for chamado — necessário para que a conversão USD→BRL funcione já na primeira renderização após a troca de moeda.
 
 ### Troca de ativo: `switchCoin(id)`
 
@@ -540,7 +543,7 @@ Nenhuma outra alteração é necessária.
 
 | Decisão | Motivo |
 |---------|--------|
-| Gráfico sempre em USD | Binance fornece dados do par XYZUSDT; não há API gratuita com klines em BRL |
+| Gráfico em USD ou BRL | Binance fornece klines apenas em USD; a conversão para BRL é aplicada em `buildChart()` usando a taxa `usdToBrl` derivada do CoinGecko (`current_price.brl / current_price.usd`) |
 | MVRV Z-Score sem dados ao vivo | Exige Realized Cap, dado on-chain proprietário; APIs gratuitas não fornecem |
 | `startDate` por ativo | Cada ativo tem uma data de início diferente na Binance — BTC: 28/04/2013, ETH: ~08/08/2015 |
 | Sem back-end | Aplicação puramente client-side; dados públicos não requerem proxy |

@@ -24,6 +24,7 @@ let lastChartPeriod = '7';
 let lastCoin        = null;
 let loadGeneration  = 0;
 let jan1Prices      = { usd: null, brl: null };
+let usdToBrl        = 1;
 
 const SYM    = { usd: '$',    brl: 'R$' };
 const LOCALE = { usd: 'en-US', brl: 'pt-BR' };
@@ -327,7 +328,8 @@ function buildChart(existing, prices, period, coin = activeCoin) {
 
     const days   = labelDays(period);
     const labels = prices.map(p => fmtLabel(p[0], days));
-    const values = prices.map(p => p[1]);
+    const rate   = currency === 'brl' ? usdToBrl : 1;
+    const values = prices.map(p => p[1] * rate);
     const { grid, tick, fill } = chartColors(coin);
 
     return new Chart(document.getElementById('main-chart'), {
@@ -544,19 +546,22 @@ async function loadAll() {
 
     if (gen !== loadGeneration) return;
 
+    if (cardsResult.status === 'fulfilled') {
+        const [coin, global] = cardsResult.value;
+        const pu = coin?.market_data?.current_price?.usd;
+        const pb = coin?.market_data?.current_price?.brl;
+        if (pu && pb) usdToBrl = pb / pu;
+        updateCards(coin, global);
+    } else {
+        console.warn('[Dashboard] CoinGecko indisponível:', cardsResult.reason.message);
+    }
+
     if (chartResult.status === 'fulfilled') {
         mainChart = buildChart(mainChart, chartResult.value, currentPeriod);
         setLoading(false);
     } else {
         console.error('[Dashboard] Erro ao carregar gráfico:', chartResult.reason.message);
         showError('Não foi possível carregar dados. Verifique sua conexão e recarregue a página.');
-    }
-
-    if (cardsResult.status === 'fulfilled') {
-        const [coin, global] = cardsResult.value;
-        updateCards(coin, global);
-    } else {
-        console.warn('[Dashboard] CoinGecko indisponível:', cardsResult.reason.message);
     }
 
     loadAdvancedIndicators(gen);

@@ -151,8 +151,8 @@ const COINS = {
                 },
                 {
                     title: 'O que são zk-SNARKs?',
-                    html:  `<p>A tecnologia central do Zcash chama-se <strong>zk-SNARK</strong> — sigla em inglês para "argumento de conhecimento sucinto não-interativo de conhecimento zero". Em termos simples: é uma prova matemática que permite a alguém demonstrar que conhece uma informação (por exemplo, que possui fundos suficientes para uma transação) <strong>sem revelar a informação em si</strong>.</p>
-                    <p>Imagine que você quer provar para um segurança que tem mais de 18 anos sem mostrar sua identidade completa. Com zk-SNARKs, o protocolo verifica matematicamente que a transação é válida e que não há criação ilegal de moeda — tudo sem expor quem pagou, quem recebeu ou quanto foi transferido.</p>`
+                    html:  `<p>A tecnologia central do Zcash chama-se <strong>zk-SNARK</strong>, abreviação de <em>zero-knowledge succinct non-interactive argument of knowledge</em>. Em termos simples: é uma prova matemática que permite a alguém demonstrar que conhece uma informação sem revelá-la, como provar que possui fundos suficientes para uma transação sem expor o saldo.</p>
+                    <p>Imagine que você quer pagar por um serviço online sem que o destinatário, o processador ou qualquer observador saiba quem você é ou quanto transferiu. Com zk-SNARKs, o protocolo verifica matematicamente que a transação é válida e que não há criação ilegal de moeda, tudo sem expor quem pagou, quem recebeu ou o valor transferido.</p>`
                 },
                 {
                     title: 'Endereços transparentes e blindados',
