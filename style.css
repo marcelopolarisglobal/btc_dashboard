@@ -207,6 +207,8 @@ header {
 .card-value.positive { color: var(--positive); }
 .card-value.negative { color: var(--negative); }
 
+.card-sublabel { font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
+
 /* ── Advanced indicators ─────────────────────────── */
 
 .advanced-cards {

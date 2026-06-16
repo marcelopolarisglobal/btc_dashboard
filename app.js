@@ -3,16 +3,20 @@ const BINANCE    = 'https://api.binance.com/api/v3';
 const FG_API     = 'https://api.alternative.me';
 const MEMPOOL    = 'https://mempool.space/api';
 const BLOCKCHAIR = 'https://api.blockchair.com';
+const AWESOMEAPI = 'https://economia.awesomeapi.com.br';
 
 const CONFIG = {
-    REFRESH_MS:        60_000,
-    MAYER_DAYS:        200,
-    FETCH_TIMEOUT_MS:  8_000,
-    FETCH_MAX_RETRIES: 2,
-    CACHE_TTL_MS:      60_000,
-    FG_BANDS:          [24, 44, 55, 75],
-    FG_COLORS:         ['#f44336', '#ff7043', '#888', '#69f0ae', '#00c853'],
-    ERR_CHART:         'Não foi possível carregar o período. Aguarde e tente novamente.',
+    REFRESH_MS:          60_000,
+    MAYER_DAYS:          200,
+    FETCH_TIMEOUT_MS:    8_000,
+    FETCH_MAX_RETRIES:   2,
+    CACHE_TTL_MS:        300_000,
+    CACHE_TTL_ATH_MS:    1_200_000,
+    CACHE_TTL_GLOBAL_MS: 600_000,
+    CACHE_TTL_FX_MS:     60_000,
+    FG_BANDS:            [24, 44, 55, 75],
+    FG_COLORS:           ['#f44336', '#ff7043', '#888', '#69f0ae', '#00c853'],
+    ERR_CHART:           'Não foi possível carregar o período. Aguarde e tente novamente.',
 };
 
 let activeCoin      = null;
@@ -24,7 +28,10 @@ let lastChartPeriod = '7';
 let lastCoin        = null;
 let loadGeneration  = 0;
 let jan1Prices      = { usd: null, brl: null };
+let month1Prices    = { usd: null, brl: null };
+let athData         = { usd: null, brl: null, dateUsd: null, dateBrl: null };
 let usdToBrl        = 1;
+let lastChange7d    = null;
 
 const SYM    = { usd: '$',    brl: 'R$' };
 const LOCALE = { usd: 'en-US', brl: 'pt-BR' };
@@ -58,14 +65,21 @@ async function get(url, attempt = 0) {
 }
 
 const cache = {};
-function cachedGet(url) {
+function cachedGet(url, ttl = CONFIG.CACHE_TTL_MS) {
     const entry = cache[url];
-    if (entry && Date.now() - entry.ts < CONFIG.CACHE_TTL_MS) return Promise.resolve(entry.data);
+    if (entry && Date.now() - entry.ts < ttl) return Promise.resolve(entry.data);
     return get(url).then(data => { cache[url] = { data, ts: Date.now() }; return data; });
 }
 
-const fetchCoin      = () => cachedGet(`${API}/coins/${activeCoin.id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false`);
-const fetchGlobal    = () => cachedGet(`${API}/global`);
+const fetchSimplePrice = () => cachedGet(
+    `${API}/simple/price?ids=bitcoin,ethereum,zcash,solana&vs_currencies=usd,brl&include_market_cap=true&include_24hr_vol=true`
+);
+const fetchCoinATH = () => cachedGet(
+    `${API}/coins/${activeCoin.id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false`,
+    CONFIG.CACHE_TTL_ATH_MS
+);
+const fetchGlobal    = () => cachedGet(`${API}/global`, CONFIG.CACHE_TTL_GLOBAL_MS);
+const fetchUsdToBrl  = () => cachedGet(`${AWESOMEAPI}/json/last/USD-BRL`, CONFIG.CACHE_TTL_FX_MS);
 const fetchFearGreed = () => get(`${FG_API}/fng/?limit=1`);
 
 async function fetchBlockHeight() {
@@ -136,6 +150,14 @@ function fmtPrice(v) {
     return v.toLocaleString(LOCALE[currency], { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function fmtPriceInt(v) {
+    return v.toLocaleString(LOCALE[currency], { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function fmtDateBR(isoStr) {
+    return new Date(isoStr).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 function fmtLarge(v) {
     if (v >= 1e12) return (v / 1e12).toFixed(2) + ' T';
     if (v >= 1e9)  return (v / 1e9).toFixed(2)  + ' B';
@@ -197,37 +219,71 @@ function setVariation(id, value) {
 
 function updateLiveCards(ticker) {
     if (!ticker) return;
-    const rate     = currency === 'brl' ? usdToBrl : 1;
     const priceUsd = parseFloat(ticker.lastPrice);
-    setText('price',          sym() + ' ' + fmtPrice(priceUsd * rate));
-    setText('high24h',        sym() + ' ' + fmtPrice(parseFloat(ticker.highPrice) * rate));
-    setText('low24h',         sym() + ' ' + fmtPrice(parseFloat(ticker.lowPrice) * rate));
+    const priceBrl = priceUsd * usdToBrl;
+    setText('price',          sym() + ' ' + fmtPriceInt(currency === 'brl' ? priceBrl : priceUsd));
     setText('last-update',    new Date().toLocaleTimeString('pt-BR'));
     setVariation('change24h', parseFloat(ticker.priceChangePercent));
     setVariation('changeYtd', jan1Prices.usd
         ? ((priceUsd - jan1Prices.usd) / jan1Prices.usd) * 100
         : null);
+    setVariation('changeMtd', month1Prices.usd
+        ? ((priceUsd - month1Prices.usd) / month1Prices.usd) * 100
+        : null);
+    const athRef   = currency === 'brl' ? athData.brl : athData.usd;
+    const priceRef = currency === 'brl' ? priceBrl    : priceUsd;
+    setVariation('athPotential', athRef && priceRef
+        ? ((athRef - priceRef) / priceRef) * 100
+        : null);
 }
 
-function updateSlowCards(coin, global) {
-    const m = coin?.market_data;
+function updateSlowCards(simplePrice, global, athCoin) {
     const c = currency;
-    if (!m) return;
-    setText('volume',         sym() + ' ' + fmtLarge(m.total_volume?.[c] ?? 0));
-    setText('marketcap',      sym() + ' ' + fmtLarge(m.market_cap?.[c] ?? 0));
-    const dom = global?.data?.market_cap_percentage?.[activeCoin.dominanceKey];
-    setText('dominance',      dom != null ? dom.toFixed(1) + '%' : 'N/D');
-    setVariation('change7d',  m.price_change_percentage_7d_in_currency?.[c]  ?? m.price_change_percentage_7d);
-    setVariation('change30d', m.price_change_percentage_30d_in_currency?.[c] ?? m.price_change_percentage_30d);
+
+    if (simplePrice) {
+        const sp = simplePrice[activeCoin.id];
+        if (sp) {
+            setText('volume',    sym() + ' ' + fmtLarge(c === 'brl' ? sp.brl_24h_vol    : sp.usd_24h_vol));
+            setText('marketcap', sym() + ' ' + fmtLarge(c === 'brl' ? sp.brl_market_cap : sp.usd_market_cap));
+            if (sp.usd && sp.brl && usdToBrl === 1) usdToBrl = sp.brl / sp.usd;
+        }
+        if (global) {
+            let dom = global.data?.market_cap_percentage?.[activeCoin.dominanceKey];
+            if (dom == null && sp?.usd_market_cap && global.data?.total_market_cap?.usd) {
+                dom = sp.usd_market_cap / global.data.total_market_cap.usd * 100;
+            }
+            setText('dominance', dom != null ? dom.toFixed(1) + '%' : 'N/D');
+        }
+    }
+
+    if (athCoin?.market_data) {
+        const m = athCoin.market_data;
+        athData = {
+            usd:     m.ath?.usd      ?? null,
+            brl:     m.ath?.brl      ?? null,
+            dateUsd: m.ath_date?.usd ?? null,
+            dateBrl: m.ath_date?.brl ?? null,
+        };
+    }
+    if (athData.usd || athData.brl) {
+        const athVal  = c === 'brl' ? athData.brl    : athData.usd;
+        const athDate = c === 'brl' ? athData.dateBrl : athData.dateUsd;
+        setText('athPrice', athVal  ? sym() + ' ' + fmtPriceInt(athVal) : '--');
+        setText('athDate',  athDate ? fmtDateBR(athDate) : '--');
+    }
 }
 
-async function fetchJan1Prices(coinId) {
-    const year = new Date().getFullYear();
-    const data = await get(`${API}/coins/${coinId}/history?date=01-01-${year}&localization=false`);
-    jan1Prices = {
-        usd: data?.market_data?.current_price?.usd ?? null,
-        brl: data?.market_data?.current_price?.brl ?? null,
-    };
+async function fetchJan1Prices() {
+    const ts     = new Date(new Date().getFullYear(), 0, 1).getTime();
+    const klines = await get(`${BINANCE}/klines?symbol=${activeCoin.binancePair}&interval=1d&startTime=${ts}&limit=1`);
+    jan1Prices   = { usd: klines?.[0]?.[4] ? parseFloat(klines[0][4]) : null, brl: null };
+}
+
+async function fetchMonth1Prices() {
+    const now    = new Date();
+    const ts     = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const klines = await get(`${BINANCE}/klines?symbol=${activeCoin.binancePair}&interval=1d&startTime=${ts}&limit=1`);
+    month1Prices = { usd: klines?.[0]?.[4] ? parseFloat(klines[0][4]) : null, brl: null };
 }
 
 // ── Fear & Greed ──────────────────────────────────────────────────────────────
@@ -294,6 +350,11 @@ function updateMayer(prices) {
     const badge = document.getElementById('mayer-badge');
     badge.textContent = label;
     badge.className   = 'badge ' + cls;
+
+    if (prices.length >= 8) {
+        lastChange7d = (lastPrice - prices[prices.length - 8][1]) / prices[prices.length - 8][1] * 100;
+        setVariation('change7d', lastChange7d);
+    }
 }
 
 function mayerUnavailable() {
@@ -422,6 +483,9 @@ function switchCoin(id) {
     currency      = 'usd';
     currentPeriod = '7';
     jan1Prices    = { usd: null, brl: null };
+    month1Prices  = { usd: null, brl: null };
+    athData       = { usd: null, brl: null, dateUsd: null, dateBrl: null };
+    lastChange7d  = null;
     localStorage.setItem('btc-dashboard-coin', id);
 
     document.querySelectorAll('.coin-btn').forEach(b => b.classList.remove('active'));
@@ -505,19 +569,24 @@ async function loadAdvancedIndicators(gen) {
 
 async function refreshCards() {
     try {
-        updateLiveCards(await fetchBinanceTicker());
+        const [ticker, fxData] = await Promise.all([fetchBinanceTicker(), fetchUsdToBrl()]);
+        const bid = parseFloat(fxData?.USDBRL?.bid ?? 0);
+        const ask = parseFloat(fxData?.USDBRL?.ask ?? 0);
+        if (bid && ask) usdToBrl = (bid + ask) / 2;
+        updateLiveCards(ticker);
     } catch (e) {
-        console.warn('[Dashboard] Refresh ao vivo (Binance) falhou:', e.message);
+        console.warn('[Dashboard] Refresh ao vivo falhou:', e.message);
     }
     try {
-        const [coin, global] = await Promise.all([fetchCoin(), fetchGlobal()]);
-        const pu = coin?.market_data?.current_price?.usd;
-        const pb = coin?.market_data?.current_price?.brl;
-        if (pu && pb) usdToBrl = pb / pu;
-        updateSlowCards(coin, global);
+        const [simplePrice, global] = await Promise.all([fetchSimplePrice(), fetchGlobal()]);
+        updateSlowCards(simplePrice, global, null);
+        if (lastChange7d !== null) setVariation('change7d', lastChange7d);
     } catch (e) {
-        console.warn('[Dashboard] Refresh dos cards (CoinGecko) falhou:', e.message);
+        console.warn('[Dashboard] Refresh slow cards (CoinGecko) falhou:', e.message);
     }
+    fetchCoinATH()
+        .then(athCoin => updateSlowCards(null, null, athCoin))
+        .catch(e => console.warn('[Dashboard] ATH indisponível:', e.message));
 }
 
 async function loadMainChart(period) {
@@ -549,43 +618,73 @@ async function loadAll() {
     const gen = ++loadGeneration;
     setLoading(true);
 
-    const [chartResult, tickerResult, cardsResult] = await Promise.allSettled([
-        fetchBinanceChart(currentPeriod),
-        fetchBinanceTicker(),
-        Promise.all([
-            fetchCoin(),
-            fetchGlobal(),
-            jan1Prices.usd === null ? fetchJan1Prices(activeCoin.id) : Promise.resolve()
-        ])
-    ]);
+    const jan1Fetch     = jan1Prices.usd   === null ? fetchJan1Prices()   : Promise.resolve();
+    const month1Fetch   = month1Prices.usd === null ? fetchMonth1Prices() : Promise.resolve();
+    const tickerPromise = fetchBinanceTicker();
 
-    if (gen !== loadGeneration) return;
+    // Gráfico → limpa overlay assim que chegar, independente da CoinGecko
+    fetchBinanceChart(currentPeriod)
+        .then(prices => {
+            if (gen !== loadGeneration) return;
+            mainChart = buildChart(mainChart, prices, currentPeriod);
+            setLoading(false);
+        })
+        .catch(err => {
+            if (gen !== loadGeneration) return;
+            console.error('[Dashboard] Erro ao carregar gráfico:', err?.message);
+            showError('Não foi possível carregar dados. Verifique sua conexão e recarregue a página.');
+        });
 
-    if (cardsResult.status === 'fulfilled') {
-        const [coin, global] = cardsResult.value;
-        const pu = coin?.market_data?.current_price?.usd;
-        const pb = coin?.market_data?.current_price?.brl;
-        if (pu && pb) usdToBrl = pb / pu;
-        updateSlowCards(coin, global);
-    } else {
-        console.warn('[Dashboard] CoinGecko indisponível:', cardsResult.reason.message);
-    }
+    // Ticker → atualiza preço e 24h assim que chegar
+    tickerPromise
+        .then(ticker => {
+            if (gen !== loadGeneration) return;
+            updateLiveCards(ticker);
+        })
+        .catch(err => {
+            if (gen !== loadGeneration) return;
+            console.warn('[Dashboard] Ticker ao vivo (Binance) indisponível:', err?.message);
+        });
 
-    if (tickerResult.status === 'fulfilled') {
-        updateLiveCards(tickerResult.value);
-    } else {
-        console.warn('[Dashboard] Ticker ao vivo (Binance) indisponível:', tickerResult.reason.message);
-    }
+    // Taxa BRL via AwesomeAPI
+    fetchUsdToBrl()
+        .then(fxData => {
+            if (gen !== loadGeneration) return;
+            const bid = parseFloat(fxData?.USDBRL?.bid ?? 0);
+            const ask = parseFloat(fxData?.USDBRL?.ask ?? 0);
+            if (bid && ask) usdToBrl = (bid + ask) / 2;
+        })
+        .catch(() => {});
 
-    if (chartResult.status === 'fulfilled') {
-        mainChart = buildChart(mainChart, chartResult.value, currentPeriod);
-        setLoading(false);
-    } else {
-        console.error('[Dashboard] Erro ao carregar gráfico:', chartResult.reason.message);
-        showError('Não foi possível carregar dados. Verifique sua conexão e recarregue a página.');
-    }
+    // CoinGecko → volume, market cap, dominância
+    Promise.all([fetchSimplePrice(), fetchGlobal()])
+        .then(([simplePrice, global]) => {
+            if (gen !== loadGeneration) return;
+            updateSlowCards(simplePrice, global, null);
+        })
+        .catch(err => {
+            if (gen !== loadGeneration) return;
+            console.warn('[Dashboard] CoinGecko indisponível:', err?.message);
+        });
+
+    // ATH com TTL longo — independente, não bloqueia o resto
+    fetchCoinATH()
+        .then(athCoin => {
+            if (gen !== loadGeneration) return;
+            updateSlowCards(null, null, athCoin);
+        })
+        .catch(err => console.warn('[Dashboard] ATH indisponível:', err?.message));
 
     loadAdvancedIndicators(gen);
+
+    // Histórico → reusa tickerPromise já resolvida (sem chamada extra) para preencher YTD e MTD
+    Promise.allSettled([jan1Fetch, month1Fetch]).then(() => {
+        if (gen !== loadGeneration) return;
+        tickerPromise.then(ticker => {
+            if (gen !== loadGeneration) return;
+            updateLiveCards(ticker);
+        }).catch(() => {});
+    });
 }
 
 // ── Events ────────────────────────────────────────────────────────────────────

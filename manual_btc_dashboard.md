@@ -10,16 +10,17 @@ Versão 2.0 · Junho 2026
 1. [Visão Geral](#visão-geral)
 2. [Estrutura de Arquivos](#estrutura-de-arquivos)
 3. [Como Executar](#como-executar)
-4. [Arquitetura Técnica](#arquitetura-técnica)
-5. [Registro de Moedas (coins.js)](#registro-de-moedas-coinsjs)
-6. [Fontes de Dados (APIs)](#fontes-de-dados-apis)
-7. [Funcionalidades](#funcionalidades)
-8. [Indicadores de Mercado](#indicadores-de-mercado)
-9. [Lógica do app.js](#lógica-do-appjs)
-10. [Estilo Visual (style.css)](#estilo-visual-stylecss)
-11. [Comportamentos Automáticos](#comportamentos-automáticos)
-12. [Adicionando um Novo Ativo](#adicionando-um-novo-ativo)
-13. [Limites e Decisões de Escopo](#limites-e-decisões-de-escopo)
+4. [Deploy e Publicação](#deploy-e-publicação)
+5. [Arquitetura Técnica](#arquitetura-técnica)
+6. [Registro de Moedas (coins.js)](#registro-de-moedas-coinsjs)
+7. [Fontes de Dados (APIs)](#fontes-de-dados-apis)
+8. [Funcionalidades](#funcionalidades)
+9. [Indicadores de Mercado](#indicadores-de-mercado)
+10. [Lógica do app.js](#lógica-do-appjs)
+11. [Estilo Visual (style.css)](#estilo-visual-stylecss)
+12. [Comportamentos Automáticos](#comportamentos-automáticos)
+13. [Adicionando um Novo Ativo](#adicionando-um-novo-ativo)
+14. [Limites e Decisões de Escopo](#limites-e-decisões-de-escopo)
 
 ---
 
@@ -59,6 +60,14 @@ A responsabilidade de cada arquivo:
 
 ## Como Executar
 
+### Produção (URL pública)
+
+Acesse diretamente no navegador:
+
+**[https://polarisglobal.me/crypto/](https://polarisglobal.me/crypto/)**
+
+### Desenvolvimento local
+
 1. Abrir o arquivo `index.html` diretamente no navegador (duplo clique, ou arrastar para o Chrome/Firefox/Safari).
 2. Não é necessário servidor local, instalação de pacotes ou terminal.
 3. O dashboard carrega automaticamente e começa a buscar dados das APIs.
@@ -92,10 +101,11 @@ Navegador
   └─ Abre index.html
        └─ Carrega style.css, coins.js e app.js
             └─ app.js executa initCoin() → loadAll()
-                 ├─ Binance API  → Dados do gráfico + Múltiplo de Mayer
-                 ├─ CoinGecko API → Preços, variações e dominância
+                 ├─ Binance API      → Gráfico + Mayer + variação 7d + YTD + MTD
+                 ├─ AwesomeAPI       → Taxa de câmbio USD→BRL (primária)
+                 ├─ CoinGecko API    → Volume, market cap, dominância e ATH
                  ├─ Alternative.me API → Fear & Greed Index
-                 └─ Mempool.space API → Altura da blockchain (halving BTC)
+                 └─ Mempool.space API  → Altura da blockchain (halving BTC)
 ```
 
 ### Ordem de inicialização
@@ -173,21 +183,26 @@ O código extrai apenas `[timestamp, fechamento]` via a função `klinesToPrices
 ### 2. CoinGecko API
 **Base:** `https://api.coingecko.com/api/v3`
 
-Usada para os **cards de preço e variação** e a **dominância de mercado**. É a API mais rica em metadados de mercado.
+Usada para **volume, market cap, dominância e ATH**. É a API mais rica em metadados de mercado agregados.
 
 Endpoints utilizados:
+
 ```
-GET /coins/{activeCoin.id}?localization=false&tickers=false&market_data=true&...
+GET /simple/price?ids=bitcoin,ethereum,zcash,solana&vs_currencies=usd,brl&include_market_cap=true&include_24hr_vol=true
+```
+Endpoint leve que retorna, para todos os 4 ativos de uma vez, os campos `usd`, `brl`, `usd_market_cap`, `brl_market_cap`, `usd_24h_vol` e `brl_24h_vol`. Substitui o endpoint pesado `/coins/{id}` para volume e market cap.
+
+```
 GET /global
 ```
+Retorna `market_cap_percentage` — objeto do qual se extrai `activeCoin.dominanceKey` para a dominância de BTC, ETH e SOL. Para ZEC (não incluso no top-10 global), a dominância é calculada localmente como `zecMarketCap / totalMarketCap * 100` usando os dados do `/simple/price` combinados com `data.total_market_cap.usd` do `/global`.
 
-O primeiro endpoint retorna `market_data` com preços em USD e BRL, volumes, market cap e variações percentuais em múltiplas moedas (`price_change_percentage_*_in_currency`). O segundo retorna `market_cap_percentage` — o objeto do qual se extrai a chave `activeCoin.dominanceKey` para a dominância do ativo selecionado.
+```
+GET /coins/{activeCoin.id}?localization=false&tickers=false&market_data=true&...
+```
+Chamado exclusivamente para o **ATH** (All-Time High: preço e data, em USD e BRL). Cache de 20 minutos — o ATH muda raramente. Não bloqueia os demais cards.
 
-Um terceiro endpoint é utilizado para o card YTD:
-```
-GET /coins/{activeCoin.id}/history?date=01-01-{ano}&localization=false
-```
-Retorna o preço histórico em USD e BRL em 01/01 do ano corrente. Chamado uma vez por ativo (na carga inicial e ao trocar de ativo), com resultado em cache na variável `jan1Prices`.
+**Nota:** O endpoint `/coins/{id}/history` foi removido. O preço de 01/01 (YTD) e o preço do primeiro dia do mês (MTD) agora são buscados via Binance klines com `startTime`.
 
 ### 3. Alternative.me API
 **Base:** `https://api.alternative.me`
@@ -211,7 +226,22 @@ GET /blocks/tip/height
 
 Retorna a altura atual da blockchain Bitcoin. Usada quando `activeCoin.halvingBlockApi === 'mempool'`.
 
-### 5. Blockchair API (reservado)
+### 5. AwesomeAPI
+**Base:** `https://economia.awesomeapi.com.br`
+
+Usada exclusivamente para a **taxa de câmbio USD→BRL**, substituindo o cálculo anterior derivado dos preços do CoinGecko.
+
+```
+GET /json/last/USD-BRL
+```
+
+Retorna `{ "USDBRL": { "bid": "...", "ask": "..." } }` — os campos são strings que representam as cotações de compra e venda. O código calcula a média (`(bid + ask) / 2`) e armazena em `usdToBrl`.
+
+A API é brasileira, gratuita, sem autenticação, e suporta CORS (`Access-Control-Allow-Origin: *`). Cache de 60 segundos, alinhado ao ciclo de refresh do dashboard.
+
+**Fallback:** se a AwesomeAPI falhar (ou for bloqueada pelo browser), o código deriva `usdToBrl` a partir do `/simple/price` da CoinGecko, comparando os campos `brl` e `usd` do ativo ativo (`sp.brl / sp.usd`). O valor anterior é preservado enquanto não houver um novo válido.
+
+### 6. Blockchair API (reservado)
 **Base:** `https://api.blockchair.com`
 
 Reservado para ativos com halving cuja blockchain não é suportada pelo Mempool.space — especificamente **Zcash**. Quando `activeCoin.halvingBlockApi === 'blockchair'`, o código usa:
@@ -321,8 +351,10 @@ Os thresholds de classificação são definidos por ativo em `activeCoin.mayer`:
 
 ### Dominância
 
-**Fonte:** CoinGecko `/global`  
-Percentual do market cap total do mercado cripto que pertence ao ativo selecionado. A chave lida em `market_cap_percentage` é `activeCoin.dominanceKey` — para BTC é `'btc'`, para ETH será `'eth'`, etc.
+**Fonte:** CoinGecko `/global` (BTC, ETH, SOL) + cálculo local (ZEC)  
+Percentual do market cap total do mercado cripto que pertence ao ativo selecionado. A chave lida em `market_cap_percentage` é `activeCoin.dominanceKey`.
+
+BTC, ETH e SOL estão incluídos no top-10 global e aparecem diretamente no campo `market_cap_percentage`. ZEC não está no top-10 e antes exibia sempre `N/D` — agora a dominância é calculada como `zecMarketCap / totalMarketCap * 100`, usando `usd_market_cap` do `/simple/price` dividido por `data.total_market_cap.usd` do `/global`.
 
 ### Contagem Regressiva do Halving
 
@@ -355,8 +387,11 @@ let lastPrices      = null;                    // dados do último gráfico rend
 let lastChartPeriod = '7';                     // período do último gráfico renderizado
 let lastCoin        = null;                    // ativo do último gráfico renderizado
 let loadGeneration  = 0;                       // contador para cancelar fetches obsoletos
-let jan1Prices      = { usd: null, brl: null }; // preço em 01/01 para cálculo YTD
-let usdToBrl        = 1;                       // taxa de câmbio USD→BRL (atualizada pelo CoinGecko)
+let jan1Prices      = { usd: null, brl: null }; // preço em 01/01 para cálculo YTD (Binance)
+let month1Prices    = { usd: null, brl: null }; // preço no 1º do mês para cálculo MTD (Binance)
+let athData         = { usd: null, brl: null, dateUsd: null, dateBrl: null }; // ATH do ativo
+let usdToBrl        = 1;                       // taxa de câmbio USD→BRL (AwesomeAPI + fallback CoinGecko)
+let lastChange7d    = null;                    // variação 7d calculada dos klines do Mayer; reutilizada no refresh
 ```
 
 ### Cancelamento de requisições em voo: `loadGeneration`
@@ -396,24 +431,35 @@ Três mecanismos de resiliência:
 2. **Retry automático** com até 2 tentativas adicionais
 3. **Backoff exponencial** entre tentativas: 500ms, depois 1000ms
 
-`cachedGet(url)` adiciona cache em memória com TTL de 60 segundos para chamadas CoinGecko.
+`cachedGet(url, ttl)` adiciona cache em memória com TTL configurável. Cada fonte usa um TTL adequado à frequência de mudança do dado:
+
+| Fonte / dado | TTL |
+|---|---|
+| CoinGecko `/simple/price` (volume, market cap) | 5 min |
+| CoinGecko `/global` (dominância) | 10 min |
+| CoinGecko `/coins/{id}` (ATH) | 20 min |
+| AwesomeAPI USD→BRL | 1 min |
 
 ### Carregamento paralelo: `loadAll()`
 
-```javascript
-const [chartResult, cardsResult] = await Promise.allSettled([
-    fetchBinanceChart(currentPeriod),
-    Promise.all([
-        fetchCoin(),
-        fetchGlobal(),
-        jan1Prices.usd === null ? fetchJan1Prices(activeCoin.id) : Promise.resolve()
-    ])
-]);
+`loadAll()` dispara todos os fetches em paralelo e não aguarda nenhum bloquear o outro. A ordem de atualização dos cards depende de qual API responde primeiro:
+
+```
+loadAll()
+  ├─ fetchBinanceChart()         → buildChart() quando chegar
+  ├─ fetchBinanceTicker()        → updateLiveCards() quando chegar
+  ├─ fetchUsdToBrl()             → usdToBrl atualizado quando chegar
+  ├─ fetchSimplePrice()          ┐
+  │  + fetchGlobal()             ┘→ updateSlowCards(sp, global, null) quando ambos chegarem
+  ├─ fetchCoinATH()              → updateSlowCards(null, null, athCoin) quando chegar
+  ├─ loadAdvancedIndicators()    → Fear & Greed + Mayer (+ change7d) + Halving
+  └─ fetchJan1Prices()           ┐ só se jan1Prices.usd === null
+     + fetchMonth1Prices()       ┘→ updateLiveCards() de novo quando ambos chegarem
 ```
 
-`Promise.allSettled()` lança as requisições em paralelo e aguarda todas terminarem, independentemente de falhas. Se a Binance estiver lenta mas a CoinGecko responder rápido, os cards já aparecem enquanto o gráfico ainda carrega. O fetch do preço de 01/01 (`fetchJan1Prices`) só é disparado quando `jan1Prices.usd === null` — ou seja, na carga inicial e ao trocar de ativo, nunca no refresh de 60 segundos.
+O preço de 01/01 (`fetchJan1Prices`) e o do primeiro do mês (`fetchMonth1Prices`) agora são buscados via Binance klines com `startTime`, sem nenhuma chamada ao CoinGecko. São disparados apenas na carga inicial e ao trocar de ativo.
 
-O bloco de cards é processado **antes** do bloco do gráfico dentro de `loadAll()`. Isso garante que `usdToBrl` esteja atualizado quando `buildChart()` for chamado — necessário para que a conversão USD→BRL funcione já na primeira renderização após a troca de moeda.
+A taxa `usdToBrl` é atualizada assim que a AwesomeAPI responde. Se ela chegar antes do `buildChart()`, a primeira renderização do gráfico já usa a taxa correta em BRL.
 
 ### Troca de ativo: `switchCoin(id)`
 
@@ -423,6 +469,9 @@ function switchCoin(id) {
     currency      = 'usd';
     currentPeriod = '7';
     jan1Prices    = { usd: null, brl: null }; // invalida cache YTD do ativo anterior
+    month1Prices  = { usd: null, brl: null }; // invalida cache MTD do ativo anterior
+    athData       = { usd: null, brl: null, dateUsd: null, dateBrl: null };
+    lastChange7d  = null;                     // força recálculo 7d para o novo ativo
     localStorage.setItem('btc-dashboard-coin', id);
     // reset visual de botões e inputs
     updateCoinHeader();       // header, title, --accent
@@ -491,7 +540,7 @@ Breakpoints explícitos:
 | Carregamento inicial completo | `loadAll()` ao final do `app.js` | Uma vez, ao abrir a página |
 | Cancelamento de fetches obsoletos | `loadGeneration` counter | A cada troca de ativo |
 
-A atualização automática usa `refreshCards()`, que busca apenas CoinGecko. O gráfico e os indicadores avançados só recarregam quando o usuário interage ou recarrega a página.
+A atualização automática usa `refreshCards()`, que dispara em paralelo: Binance ticker + AwesomeAPI (cards ao vivo + taxa BRL), CoinGecko `/simple/price` + `/global` (volume, market cap, dominância) e CoinGecko `/coins/{id}` (ATH, com cache de 20 min). O gráfico e os indicadores avançados só recarregam quando o usuário interage ou recarrega a página.
 
 ---
 
@@ -543,11 +592,44 @@ Nenhuma outra alteração é necessária.
 
 ---
 
+## Deploy e Publicação
+
+O dashboard é publicado via **GitHub Pages** no repositório `marcelopolarisglobal/polarisglobal.me`, que hospeda o site principal da Polaris Global Strategies Ltd.
+
+### Estrutura no repositório de produção
+
+```
+polarisglobal.me/          ← repositório GitHub (branch: main)
+├── index.html             → polarisglobal.me/
+├── css/, js/              → site principal
+└── crypto/                → polarisglobal.me/crypto/
+    ├── index.html
+    ├── style.css
+    ├── app.js
+    └── coins.js
+```
+
+O dashboard funciona como app **standalone** — código independente do site principal, sem compartilhamento de CSS, JS ou lógica. Não aparece no menu principal salvo adição manual de link.
+
+### Como publicar uma atualização
+
+1. Editar os arquivos em `/Users/jarvis/Projects/btc_dashboard/` (ambiente de desenvolvimento)
+2. Copiar os 4 arquivos alterados para `/Users/jarvis/Projects/website/crypto/`
+3. Commit e push:
+   ```bash
+   git -C ~/Projects/website add crypto/
+   git -C ~/Projects/website commit -m "feat: descrição da mudança"
+   git -C ~/Projects/website push
+   ```
+4. GitHub Pages publica automaticamente em 1–3 minutos.
+
+---
+
 ## Limites e Decisões de Escopo
 
 | Decisão | Motivo |
 |---------|--------|
-| Gráfico em USD ou BRL | Binance fornece klines apenas em USD; a conversão para BRL é aplicada em `buildChart()` usando a taxa `usdToBrl` derivada do CoinGecko (`current_price.brl / current_price.usd`) |
+| Gráfico em USD ou BRL | Binance fornece klines apenas em USD; a conversão para BRL é aplicada em `buildChart()` usando a taxa `usdToBrl` fornecida pela AwesomeAPI (fallback: `sp.brl / sp.usd` do CoinGecko `/simple/price`) |
 | MVRV Z-Score sem dados ao vivo | Exige Realized Cap, dado on-chain proprietário; APIs gratuitas não fornecem |
 | `startDate` por ativo | Cada ativo tem uma data de início diferente na Binance — BTC: 28/04/2013, ETH: ~08/08/2015 |
 | Sem back-end | Aplicação puramente client-side; dados públicos não requerem proxy |
